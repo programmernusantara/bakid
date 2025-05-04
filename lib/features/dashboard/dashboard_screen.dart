@@ -47,10 +47,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           type: BottomNavigationBarType.fixed,
           selectedItemColor: Colors.blue,
           unselectedItemColor: Colors.grey.shade500,
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
+          selectedFontSize: 10,
+          unselectedFontSize: 0, // Hide label when not selected
           elevation: 0,
-          showUnselectedLabels: true,
+          showSelectedLabels: true,
+          showUnselectedLabels: false, // Only show label for selected item
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.announcement_outlined),
