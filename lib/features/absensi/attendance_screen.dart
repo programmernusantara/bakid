@@ -9,87 +9,99 @@ class AttendanceScreen extends ConsumerStatefulWidget {
   ConsumerState<AttendanceScreen> createState() => _AttendanceScreenState();
 }
 
-class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
+class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  final santriId = SupabaseService().currentUser?.id ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final santriId = SupabaseService().currentUser?.id ?? '';
-
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.grey[100],
-          elevation: 0,
-          centerTitle: true,
-          bottom: const TabBar(
-            labelColor: Colors.black,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.black,
-            tabs: [
-              Tab(icon: Icon(Icons.today), text: 'Harian'),
-              Tab(icon: Icon(Icons.calendar_month), text: 'Bulanan'),
-            ],
-          ),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TabBarView(
-            children: [
-              // Harian
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: SupabaseService().fetchDailyAttendance(santriId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return _buildEmptyState(
-                      icon: Icons.list_alt,
-                      message: 'Belum ada data absensi',
-                    );
-                  }
-                  return ListView.separated(
-                    itemCount: snapshot.data!.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final absensi = snapshot.data![index];
-                      return _buildDailyCard(absensi);
-                    },
-                  );
-                },
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Tab Navigation
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.black,
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.grey,
+                indicatorWeight: 2,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                tabs: const [
+                  Tab(icon: Icon(Icons.today), text: 'Harian'),
+                  Tab(icon: Icon(Icons.calendar_month), text: 'Bulanan'),
+                ],
               ),
-              // Bulanan
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: SupabaseService().fetchMonthlyAttendance(santriId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return _buildEmptyState(
-                      icon: Icons.calendar_today,
-                      message: 'Belum ada data rekap bulanan',
-                    );
-                  }
-                  return ListView.separated(
-                    itemCount: snapshot.data!.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final rekap = snapshot.data![index];
-                      return _buildMonthlyCard(rekap);
-                    },
-                  );
-                },
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [_buildDailyAttendance(), _buildMonthlyAttendance()],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState({required IconData icon, required String message}) {
+  Widget _buildDailyAttendance() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: SupabaseService().fetchDailyAttendance(santriId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildEmptyState(Icons.list_alt, 'Belum ada data absensi');
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: snapshot.data!.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder:
+              (context, index) => _buildDailyCard(snapshot.data![index]),
+        );
+      },
+    );
+  }
+
+  Widget _buildMonthlyAttendance() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: SupabaseService().fetchMonthlyAttendance(santriId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildEmptyState(
+            Icons.calendar_today,
+            'Belum ada data rekap bulanan',
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: snapshot.data!.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder:
+              (context, index) => _buildMonthlyCard(snapshot.data![index]),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(IconData icon, String message) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -133,8 +145,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   'Status: ${_capitalize(data['status'])}',
                   style: TextStyle(color: _getStatusColor(data['status'])),
                 ),
-                if (data['keterangan'] != null &&
-                    data['keterangan'].toString().isNotEmpty)
+                if ((data['keterangan'] ?? '').toString().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
@@ -173,7 +184,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           ),
           const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildIndicator('Hadir', data['total_hadir'], Colors.green),
               _buildIndicator('Izin', data['total_izin'], Colors.orange),
@@ -193,11 +204,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Widget _buildIndicator(String label, int count, Color color) {
     return Column(
       children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
+        Icon(Icons.circle, size: 12, color: color),
         const SizedBox(height: 4),
         Text('$count', style: const TextStyle(fontWeight: FontWeight.bold)),
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
@@ -208,11 +215,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Icon _getStatusIcon(String status) {
     switch (status) {
       case 'hadir':
-        return const Icon(Icons.check, color: Colors.green, size: 20);
+        return const Icon(Icons.check_circle, color: Colors.green, size: 20);
       case 'izin':
-        return const Icon(Icons.info, color: Colors.orange, size: 20);
+        return const Icon(Icons.info_outline, color: Colors.orange, size: 20);
       case 'alpa':
-        return const Icon(Icons.close, color: Colors.red, size: 20);
+        return const Icon(Icons.cancel, color: Colors.red, size: 20);
       default:
         return const Icon(Icons.help_outline, color: Colors.grey, size: 20);
     }
