@@ -33,7 +33,7 @@ class AuthChecker extends ConsumerWidget {
 
     switch (role) {
       case 'admin':
-        return const AdminDasboard();
+        return const AdminDashboard();
       case 'guru':
         return const GuruDashboard();
       default:
