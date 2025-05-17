@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Extension method untuk capitalize string
+extension StringExtension on String {
+  String capitalize() {
+    if (isEmpty) return this;
+    return this[0].toUpperCase() + substring(1);
+  }
+}
+
 class VerifikasiIzinPage extends ConsumerStatefulWidget {
   const VerifikasiIzinPage({super.key});
 
@@ -11,21 +19,28 @@ class VerifikasiIzinPage extends ConsumerStatefulWidget {
 
 class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
   final supabase = Supabase.instance.client;
+  String selectedStatus = 'menunggu'; // Default filter status
 
   Future<List<Map<String, dynamic>>> fetchIzin() async {
     final response = await supabase
         .from('permohonan_izin')
         .select('*, profil_guru(nama_lengkap)')
+        .eq('status', selectedStatus)
         .order('dibuat_pada', ascending: false);
 
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Future<void> updateStatus(String id, String status) async {
+  Future<void> updateStatus(
+    String id,
+    String status,
+    String? catatanAdmin,
+  ) async {
     await supabase
         .from('permohonan_izin')
         .update({
           'status': status,
+          'catatan_admin': catatanAdmin,
           'diperbarui_pada': DateTime.now().toIso8601String(),
         })
         .eq('id', id);
@@ -75,8 +90,29 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          Colors.grey[200], // Warna abu-abu muda untuk latar belakang
+      backgroundColor: Colors.grey[200],
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        actions: [
+          DropdownButton<String>(
+            value: selectedStatus,
+            onChanged: (value) {
+              setState(() {
+                selectedStatus = value!;
+              });
+            },
+            items:
+                ['menunggu', 'disetujui', 'ditolak']
+                    .map(
+                      (status) => DropdownMenuItem(
+                        value: status,
+                        child: Text(status.capitalize()),
+                      ),
+                    )
+                    .toList(),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: fetchIzin(),
         builder: (context, snapshot) {
@@ -91,7 +127,7 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              setState(() {}); // Refresh data
+              setState(() {});
             },
             child: ListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 16),
@@ -115,7 +151,6 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header nama guru dan status
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -133,7 +168,6 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        // Detail info izin
                         _buildInfoRow(
                           Icons.description_outlined,
                           'Jenis Izin',
@@ -158,7 +192,6 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
                           izin['tanggal_selesai'],
                         ),
                         const SizedBox(height: 12),
-                        // Tombol aksi jika status menunggu
                         if (izin['status'] == 'menunggu')
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
@@ -175,8 +208,9 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                onPressed:
-                                    () => updateStatus(izin['id'], 'disetujui'),
+                                onPressed: () {
+                                  _showCatatanDialog(izin['id'], 'disetujui');
+                                },
                               ),
                               const SizedBox(width: 12),
                               ElevatedButton.icon(
@@ -191,8 +225,9 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                onPressed:
-                                    () => updateStatus(izin['id'], 'ditolak'),
+                                onPressed: () {
+                                  _showCatatanDialog(izin['id'], 'ditolak');
+                                },
                               ),
                             ],
                           ),
@@ -239,6 +274,42 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showCatatanDialog(String id, String status) {
+    final TextEditingController catatanController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(status == 'disetujui' ? 'Setujui Izin' : 'Tolak Izin'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: catatanController,
+                decoration: const InputDecoration(labelText: 'Catatan Admin'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                updateStatus(id, status, catatanController.text);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Simpan'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Batal'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

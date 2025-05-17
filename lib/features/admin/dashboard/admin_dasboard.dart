@@ -1,4 +1,5 @@
 import 'package:bakid/features/admin/dashboard/aktivitas_guru.dart';
+import 'package:bakid/features/admin/dashboard/pengumuman/pengumuman_list.dart';
 import 'package:bakid/features/admin/dashboard/profile_guru.dart';
 import 'package:bakid/features/admin/dashboard/verivikasi_izin.dart';
 import 'package:flutter/material.dart';
@@ -20,12 +21,14 @@ class _AdminDasboardState extends ConsumerState<AdminDasboard> {
     AktivitasHarianGuru(),
     GuruManagementPage(),
     VerifikasiIzinPage(),
+    PengumumanListPage(), // Tambahkan ini
   ];
 
   final List<String> titles = const [
     'Aktivitas Guru',
     'Profile Guru',
-    'Verifikasi Perizinan',
+    'Perizinan Guru',
+    'Pengumuman Guru', // Tambahkan ini
   ];
 
   @override
@@ -56,23 +59,28 @@ class _AdminDasboardState extends ConsumerState<AdminDasboard> {
             ),
             ListTile(
               leading: const Icon(Icons.assignment_outlined),
-              title: const Text('Aktivitas Guru'),
+              title: const Text('Aktivitas'),
               selected: selectedIndex == 0,
               onTap: () => setState(() => selectedIndex = 0),
             ),
             ListTile(
               leading: const Icon(Icons.savings_outlined),
-              title: const Text('Profile Guru'),
+              title: const Text('Profile'),
               selected: selectedIndex == 1,
               onTap: () => setState(() => selectedIndex = 1),
             ),
             ListTile(
               leading: const Icon(Icons.payment_outlined),
-              title: const Text('Verifikasi Perizinan'),
+              title: const Text('Perizinan'),
               selected: selectedIndex == 2,
               onTap: () => setState(() => selectedIndex = 2),
             ),
-
+            ListTile(
+              leading: const Icon(Icons.announcement_outlined),
+              title: const Text('Pengumuman'),
+              selected: selectedIndex == 3,
+              onTap: () => setState(() => selectedIndex = 3),
+            ),
             const Spacer(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
