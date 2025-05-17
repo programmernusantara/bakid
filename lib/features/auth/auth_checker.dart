@@ -1,4 +1,4 @@
-import 'package:bakid/features/admin/dashboard/admin_dashboard.dart';
+import 'package:bakid/features/admin/dashboard/admin_dasboard.dart';
 import 'package:bakid/features/auth/auth_providers.dart';
 import 'package:bakid/features/auth/login_screen.dart';
 import 'package:bakid/features/auth/splash_screen.dart';
@@ -33,7 +33,7 @@ class AuthChecker extends ConsumerWidget {
 
     switch (role) {
       case 'admin':
-        return const AdminDashboard();
+        return const AdminDasboard();
       case 'guru':
         return const GuruDashboard();
       default:
