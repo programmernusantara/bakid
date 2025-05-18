@@ -94,22 +94,23 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         actions: [
-          DropdownButton<String>(
-            value: selectedStatus,
-            onChanged: (value) {
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.filter_list, color: Colors.black87),
+            onSelected: (value) {
               setState(() {
-                selectedStatus = value!;
+                selectedStatus = value;
               });
             },
-            items:
-                ['menunggu', 'disetujui', 'ditolak']
-                    .map(
-                      (status) => DropdownMenuItem(
-                        value: status,
-                        child: Text(status.capitalize()),
-                      ),
-                    )
-                    .toList(),
+            itemBuilder: (context) {
+              return ['menunggu', 'disetujui', 'ditolak']
+                  .map(
+                    (status) => PopupMenuItem<String>(
+                      value: status,
+                      child: Text(status.capitalize()),
+                    ),
+                  )
+                  .toList();
+            },
           ),
         ],
       ),

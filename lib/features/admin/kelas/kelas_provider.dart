@@ -1,7 +1,7 @@
 // providers/kelas_provider.dart
 import 'package:bakid/core/services/auth_service.dart';
-import 'package:bakid/features/admin/dashboard/kelas/kelas_model.dart';
-import 'package:bakid/features/admin/dashboard/kelas/kelas_repository.dart';
+import 'package:bakid/features/admin/kelas/kelas_model.dart';
+import 'package:bakid/features/admin/kelas/kelas_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final kelasRepositoryProvider = Provider<KelasRepository>((ref) {

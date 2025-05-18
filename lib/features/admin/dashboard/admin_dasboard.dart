@@ -1,8 +1,9 @@
 import 'package:bakid/features/admin/dashboard/aktivitas_guru.dart';
-import 'package:bakid/features/admin/dashboard/kelas/kelas_list_page.dart';
-import 'package:bakid/features/admin/dashboard/pengumuman/pengumuman_list.dart';
+import 'package:bakid/features/admin/kelas/kelas_list_page.dart';
+import 'package:bakid/features/admin/pengumuman/pengumuman_list.dart';
 import 'package:bakid/features/admin/dashboard/profile_guru.dart';
 import 'package:bakid/features/admin/dashboard/verivikasi_izin.dart';
+import 'package:bakid/features/auth/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bakid/core/services/auth_service.dart';
@@ -34,11 +35,49 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     'Manajemen Kelas',
   ];
 
+  Future<void> _showLogoutConfirmation(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Konfirmasi Logout'),
+            content: const Text('Apakah Anda yakin ingin keluar?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Keluar'),
+              ),
+            ],
+          ),
+    );
+
+    if (shouldLogout == true) {
+      await _performLogout();
+    }
+  }
+
+  Future<void> _performLogout() async {
+    final authService = ref.read(authServiceProvider);
+    await authService.logout();
+    ref.read(currentUserProvider.notifier).state = null;
+
+    // Navigate to login screen and remove all previous routes
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final authService = ref.read(authServiceProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -60,30 +99,26 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             DrawerHeader(
               decoration: BoxDecoration(
                 color: Color.alphaBlend(
-                  Theme.of(
-                    context,
-                  ).colorScheme.primary.withAlpha(25), // ~10% opacity
-                  Theme.of(context).colorScheme.surface,
+                  colors.primary.withAlpha(25),
+                  colors.surface,
                 ),
               ),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo
                     Container(
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Theme.of(context).colorScheme.primaryContainer,
+                        color: colors.primaryContainer,
                       ),
                       child: Center(
                         child: Icon(
                           Icons.school,
                           size: 40,
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
+                          color: colors.onPrimaryContainer,
                         ),
                       ),
                     ),
@@ -93,7 +128,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
+                        color: colors.onSurface,
                       ),
                     ),
                   ],
@@ -132,15 +167,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ),
             const Spacer(),
             const Divider(),
-
             _DrawerItem(
               icon: Icons.logout,
               label: 'Keluar',
               color: colors.error,
-              onTap: () async {
-                await authService.logout();
-                ref.read(currentUserProvider.notifier).state = null;
-              },
+              onTap: () => _showLogoutConfirmation(context),
             ),
             const SizedBox(height: 16),
           ],

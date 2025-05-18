@@ -1,4 +1,4 @@
-import 'package:bakid/features/admin/dashboard/pengumuman/pengumuman_provider.dart';
+import 'package:bakid/features/admin/pengumuman/pengumuman_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';

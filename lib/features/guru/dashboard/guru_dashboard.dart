@@ -1,37 +1,87 @@
-import 'package:bakid/core/services/auth_service.dart';
-import 'package:bakid/features/auth/auth_providers.dart';
+import 'package:bakid/features/guru/home/home_page.dart';
+import 'package:bakid/features/guru/jurnal/jurnal_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class GuruDashboard extends ConsumerWidget {
+class GuruDashboard extends StatefulWidget {
   const GuruDashboard({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
+  State<GuruDashboard> createState() => _GuruDashboardState();
+}
 
+class _GuruDashboardState extends State<GuruDashboard> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = const [HomePage(), JurnalPage()];
+
+  final List<String> _titles = [
+    'Home',
+    'Jurnal',
+    'Absen',
+    'Kehadiran',
+    'Perizinan',
+  ];
+
+  final List<IconData> _icons = [
+    Icons.home_outlined,
+    Icons.edit_calendar_outlined,
+    Icons.fingerprint,
+    Icons.checklist_rtl,
+    Icons.assignment_turned_in_outlined,
+  ];
+
+  void _onTabSelected(int index) {
+    setState(() => _selectedIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Guru Dashboard'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        centerTitle: false,
+        title: Text(
+          _titles[_selectedIndex],
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authServiceProvider).logout();
-              ref.read(currentUserProvider.notifier).state = null;
+            icon: const Icon(
+              Icons.notifications_none_outlined,
+              color: Colors.black87,
+            ),
+            onPressed: () {
+              // Implementasi halaman notifikasi
             },
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Assalamualaikum, ${user?['nama'] ?? 'Guru'}'),
-            const SizedBox(height: 20),
-            const Text('Anda login sebagai Guru'),
-          ],
-        ),
+      backgroundColor: Colors.grey[200],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _pages[_selectedIndex],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onTabSelected,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.blueAccent,
+        unselectedItemColor: Colors.grey[600],
+        elevation: 0,
+        backgroundColor: Colors.white,
+        selectedFontSize: 12,
+        unselectedFontSize: 11,
+        items: List.generate(_titles.length, (i) {
+          return BottomNavigationBarItem(
+            icon: Icon(_icons[i]),
+            label: _titles[i],
+          );
+        }),
       ),
     );
   }

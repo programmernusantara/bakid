@@ -1,5 +1,5 @@
-import 'package:bakid/features/admin/dashboard/pengumuman/pengumuman_form.dart';
-import 'package:bakid/features/admin/dashboard/pengumuman/pengumuman_provider.dart';
+import 'package:bakid/features/admin/pengumuman/pengumuman_form.dart';
+import 'package:bakid/features/admin/pengumuman/pengumuman_provider.dart';
 import 'package:bakid/features/auth/auth_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -291,7 +291,7 @@ class _PengumumanListPageState extends ConsumerState<PengumumanListPage> {
     final currentUser = ref.watch(currentUserProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.grey[200],
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

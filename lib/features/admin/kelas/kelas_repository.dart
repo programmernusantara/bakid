@@ -1,5 +1,5 @@
 // repositories/kelas_repository.dart
-import 'package:bakid/features/admin/dashboard/kelas/kelas_model.dart';
+import 'package:bakid/features/admin/kelas/kelas_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class KelasRepository {

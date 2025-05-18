@@ -17,21 +17,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _rememberMe = true;
   bool _passwordVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSavedPreferences();
-  }
-
-  Future<void> _loadSavedPreferences() async {
-    final lastUsername = await ref.read(authServiceProvider).getLastUsername();
-    if (lastUsername != null && mounted) {
-      _usernameController.text = lastUsername;
-    }
-  }
 
   @override
   void dispose() {
@@ -51,25 +37,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .login(
             _usernameController.text.trim(),
             _passwordController.text.trim(),
-            rememberMe: _rememberMe,
           );
 
       if (!mounted) return;
 
       if (user == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Login gagal')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Username atau password salah')),
+        );
         return;
       }
 
       ref.read(currentUserProvider.notifier).state = user;
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: ${e.toString()}')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -79,111 +63,166 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Login Madrasah')),
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo dan Judul
+                Column(
                   children: [
-                    Image.asset('assets/logo_madrasah.png', height: 120),
-                    const SizedBox(height: 32),
-
-                    if (widget.error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          widget.error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                            fontSize: 16,
-                          ),
-                        ),
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(shape: BoxShape.circle),
+                      child: Icon(
+                        Icons.school, // Icon sekolah/madrasah
+                        size: 80,
+                        color: Colors.blue,
                       ),
-
-                    TextFormField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator:
-                          (value) =>
-                              value?.isEmpty ?? true
-                                  ? 'Username harus diisi'
-                                  : null,
                     ),
                     const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _passwordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed:
-                              () => setState(
-                                () => _passwordVisible = !_passwordVisible,
-                              ),
-                        ),
-                        border: const OutlineInputBorder(),
-                      ),
-                      obscureText: !_passwordVisible,
-                      validator:
-                          (value) =>
-                              value?.isEmpty ?? true
-                                  ? 'Password harus diisi'
-                                  : null,
-                    ),
-                    const SizedBox(height: 8),
-
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: _rememberMe,
-                          onChanged:
-                              (value) =>
-                                  setState(() => _rememberMe = value ?? false),
-                        ),
-                        const Text('Ingat username saya'),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child:
-                            _isLoading
-                                ? const CircularProgressIndicator()
-                                : const Text(
-                                  'MASUK',
-                                  style: TextStyle(fontSize: 16),
-                                ),
+                    Text(
+                      'Bakid App',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 32),
+
+                // Form Login
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.outlineVariant),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          // Pesan Error
+                          if (widget.error != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Text(
+                                widget.error!,
+                                style: TextStyle(
+                                  color: colors.error,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+
+                          // Username Field
+                          TextFormField(
+                            controller: _usernameController,
+                            decoration: InputDecoration(
+                              labelText: 'Username',
+                              prefixIcon: const Icon(Icons.person_outline),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
+                            ),
+                            validator:
+                                (value) =>
+                                    value?.isEmpty ?? true
+                                        ? 'Harus diisi'
+                                        : null,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Password Field
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: !_passwordVisible,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _passwordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  size: 20,
+                                ),
+                                onPressed:
+                                    () => setState(
+                                      () =>
+                                          _passwordVisible = !_passwordVisible,
+                                    ),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
+                            ),
+                            validator:
+                                (value) =>
+                                    value?.isEmpty ?? true
+                                        ? 'Harus diisi'
+                                        : null,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Login Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                backgroundColor: Colors.blue,
+                              ),
+                              child:
+                                  _isLoading
+                                      ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : const Text(
+                                        'MASUK',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

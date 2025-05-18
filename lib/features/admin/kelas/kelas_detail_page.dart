@@ -1,6 +1,5 @@
-// features/admin/dashboard/kelas/kelas_detail_page.dart
-import 'package:bakid/features/admin/dashboard/kelas/kelas_model.dart';
-import 'package:bakid/features/admin/dashboard/kelas/kelas_provider.dart';
+import 'package:bakid/features/admin/kelas/kelas_model.dart';
+import 'package:bakid/features/admin/kelas/kelas_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,7 +44,6 @@ class _KelasDetailPageState extends ConsumerState<KelasDetailPage>
         title: Text('Kelas ${selectedKelas.nama}'),
         centerTitle: true,
         elevation: 0,
-
         bottom: TabBar(
           controller: _tabController,
           indicatorSize: TabBarIndicatorSize.tab,
@@ -137,7 +135,7 @@ class _JurnalTab extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final jurnal = jurnalList[index];
-              return _JurnalCard(jurnal: jurnal);
+              return JurnalCard(jurnal: jurnal);
             },
           ),
         );
@@ -146,10 +144,10 @@ class _JurnalTab extends ConsumerWidget {
   }
 }
 
-class _JurnalCard extends StatelessWidget {
+class JurnalCard extends StatelessWidget {
   final JurnalMengajar jurnal;
 
-  const _JurnalCard({required this.jurnal});
+  const JurnalCard({super.key, required this.jurnal});
 
   @override
   Widget build(BuildContext context) {
@@ -159,9 +157,10 @@ class _JurnalCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      margin: EdgeInsets.zero,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: colors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: colors.outlineVariant, width: 1),
       ),
       child: Padding(
@@ -174,99 +173,98 @@ class _JurnalCard extends StatelessWidget {
               children: [
                 Text(
                   _formatDate(jurnal.tanggal),
-                  style: textTheme.titleSmall?.copyWith(
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: colors.onSurface,
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: colors.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     jurnal.mataPelajaran,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: colors.onSecondaryContainer,
-                      fontWeight: FontWeight.w500,
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colors.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Materi Pembelajaran',
-              style: textTheme.labelSmall?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
+
+            const SizedBox(height: 16),
+            const Divider(height: 1, thickness: 1),
+
+            _buildInfoRow(
+              Icons.menu_book_outlined,
+              'Materi',
+              jurnal.materi,
+              colors.primary,
             ),
-            const SizedBox(height: 4),
-            Text(jurnal.materi, style: textTheme.bodyMedium),
+
             if (jurnal.kendala != null) ...[
-              const SizedBox(height: 12),
-              Text(
+              const Divider(height: 16, thickness: 1),
+              _buildInfoRow(
+                Icons.warning_amber_outlined,
                 'Kendala',
-                style: textTheme.labelSmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.warning_amber_outlined,
-                    size: 16,
-                    color: colors.error,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      jurnal.kendala!,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colors.error,
-                      ),
-                    ),
-                  ),
-                ],
+                jurnal.kendala!,
+                colors.error,
               ),
             ],
+
             if (jurnal.solusi != null) ...[
-              const SizedBox(height: 12),
-              Text(
+              const Divider(height: 16, thickness: 1),
+              _buildInfoRow(
+                Icons.check_circle_outlined,
                 'Solusi',
-                style: textTheme.labelSmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.check_circle_outlined,
-                    size: 16,
-                    color: colors.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      jurnal.solusi!,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colors.primary,
-                      ),
-                    ),
-                  ),
-                ],
+                jurnal.solusi!,
+                colors.primary,
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color.alphaBlend(color.withAlpha(204), Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -330,7 +328,7 @@ class _AbsensiTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tambahkan data absensi untuk memulai',
+                  'Absensi akan muncul setelah data tersedia',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colors.outline,
                   ),
@@ -348,7 +346,7 @@ class _AbsensiTab extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final absensi = absensiList[index];
-              return _AbsensiCard(absensi: absensi);
+              return AbsensiCard(absensi: absensi);
             },
           ),
         );
@@ -357,10 +355,10 @@ class _AbsensiTab extends ConsumerWidget {
   }
 }
 
-class _AbsensiCard extends StatelessWidget {
+class AbsensiCard extends StatelessWidget {
   final RekapAbsensi absensi;
 
-  const _AbsensiCard({required this.absensi});
+  const AbsensiCard({super.key, required this.absensi});
 
   @override
   Widget build(BuildContext context) {
@@ -370,9 +368,10 @@ class _AbsensiCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      margin: EdgeInsets.zero,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: colors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: colors.outlineVariant, width: 1),
       ),
       child: Padding(
@@ -380,148 +379,171 @@ class _AbsensiCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header dengan tanggal
+            Text(
+              _formatDate(absensi.tanggal),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Statistik kehadiran
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _formatDate(absensi.tanggal),
-                  style: textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colors.onSurface,
-                  ),
+                _buildStatisticItem(
+                  'Hadir',
+                  absensi.hadir.toString(),
+                  colors.primary,
                 ),
-                if (absensi.mataPelajaran != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.tertiaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      absensi.mataPelajaran!,
-                      style: textTheme.labelSmall?.copyWith(
-                        color: colors.onTertiaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                const SizedBox(width: 12),
+                _buildStatisticItem(
+                  'Izin',
+                  absensi.izin.toString(),
+                  colors.secondary,
+                ),
+                const SizedBox(width: 12),
+                _buildStatisticItem(
+                  'Alpa',
+                  absensi.alpa.toString(),
+                  colors.error,
+                ),
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _StatusIndicator(
-                  icon: Icons.check_circle_outlined,
-                  color: colors.primary,
-                  count: absensi.hadir,
-                  label: 'Hadir',
+            const Divider(height: 1, thickness: 1),
+
+            // Daftar nama yang izin (jika ada)
+            if (absensi.namaIzin != null && absensi.namaIzin!.isNotEmpty)
+              _buildNameList(
+                'Nama Yang Izin',
+                absensi.namaIzin!,
+                colors.secondary,
+              ),
+
+            // Daftar nama yang alpa (jika ada)
+            if (absensi.namaAlpa != null && absensi.namaAlpa!.isNotEmpty)
+              _buildNameList('Nama Yang Alpa', absensi.namaAlpa!, colors.error),
+
+            // Keterangan (jika ada)
+            if (absensi.keterangan != null && absensi.keterangan!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: _buildInfoRow(
+                  Icons.info_outline,
+                  'Keterangan',
+                  absensi.keterangan!,
+                  colors.onSurfaceVariant,
                 ),
-                _StatusIndicator(
-                  icon: Icons.mail_outlined,
-                  color: colors.secondary,
-                  count: absensi.izin,
-                  label: 'Izin',
-                ),
-                _StatusIndicator(
-                  icon: Icons.highlight_off_outlined,
-                  color: colors.error,
-                  count: absensi.alpa,
-                  label: 'Alpa',
-                ),
-              ],
-            ),
-            if (absensi.namaIzin != null || absensi.namaAlpa != null) ...[
-              const SizedBox(height: 16),
-              if (absensi.namaIzin != null) ...[
-                Text(
-                  'Siswa Izin',
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  absensi.namaIzin!,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colors.secondary,
-                  ),
-                ),
-              ],
-              if (absensi.namaAlpa != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Siswa Alpa',
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  absensi.namaAlpa!,
-                  style: textTheme.bodyMedium?.copyWith(color: colors.error),
-                ),
-              ],
-            ],
+              ),
           ],
         ),
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  Widget _buildStatisticItem(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(color.withAlpha(25), Colors.white),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 12, color: color)),
+          ],
+        ),
+      ),
+    );
   }
-}
 
-class _StatusIndicator extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final int count;
-  final String label;
+  Widget _buildNameList(String title, String names, Color color) {
+    final nameList = names.split(',').map((e) => e.trim()).toList();
 
-  const _StatusIndicator({
-    required this.icon,
-    required this.color,
-    required this.count,
-    required this.label,
-  });
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children:
+                nameList.map((name) {
+                  return Chip(
+                    label: Text(name),
+                    backgroundColor: Color.alphaBlend(
+                      color.withAlpha(25),
+                      Colors.white,
+                    ),
+                    labelStyle: TextStyle(color: color),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: Color.alphaBlend(
+                          color.withAlpha(76),
+                          Colors.white,
+                        ),
+                        width: 1,
+                      ),
+                    ),
+                  );
+                }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withAlpha(1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          count.toString(),
-          style: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color.alphaBlend(color.withAlpha(204), Colors.white),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(value, style: TextStyle(fontSize: 14, color: color)),
+            ],
           ),
         ),
       ],
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }
