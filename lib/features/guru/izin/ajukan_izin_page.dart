@@ -1,4 +1,5 @@
 import 'package:bakid/core/services/auth_service.dart';
+import 'package:bakid/features/guru/izin/izin_providers.dart';
 import 'package:bakid/features/guru/izin/jadwal_izin_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,27 +38,75 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
     try {
       final supabase = ref.read(supabaseProvider);
 
-      // Validasi jadwal di tanggal izin
+      // Dapatkan semua tanggal dalam rentang
+      final datesInRange = <DateTime>[];
+      for (
+        var date = _tanggalIzin!.start;
+        date.isBefore(_tanggalIzin!.end.add(const Duration(days: 1)));
+        date = date.add(const Duration(days: 1))
+      ) {
+        datesInRange.add(date);
+      }
+
+      // Dapatkan jadwal untuk hari-hari tersebut
+      final daysInRange = datesInRange.map((d) => d.weekday).toSet();
       final jadwal = await supabase
           .from('jadwal_mengajar')
-          .select()
+          .select('id, hari_dalam_minggu')
           .eq('guru_id', user['profil']['id'])
-          .gte('tanggal', DateFormat('yyyy-MM-dd').format(_tanggalIzin!.start))
-          .lte('tanggal', DateFormat('yyyy-MM-dd').format(_tanggalIzin!.end));
+          .inFilter('hari_dalam_minggu', daysInRange.toList());
 
       if (jadwal.isEmpty) {
         throw 'Anda tidak memiliki jadwal mengajar di tanggal tersebut';
       }
 
-      // Submit permohonan izin
-      await supabase.from('permohonan_izin').insert({
-        'guru_id': user['profil']['id'],
-        'jenis_izin': _jenisIzin,
-        'tanggal_mulai': DateFormat('yyyy-MM-dd').format(_tanggalIzin!.start),
-        'tanggal_selesai': DateFormat('yyyy-MM-dd').format(_tanggalIzin!.end),
-        'alasan': _alasanController.text,
-        'status': 'menunggu',
-      });
+      // Buat data izin untuk setiap jadwal di setiap tanggal
+      final insertData = <Map<String, dynamic>>[];
+      for (final j in jadwal) {
+        for (final date in datesInRange) {
+          if (date.weekday == j['hari_dalam_minggu']) {
+            // Cek apakah sudah ada izin aktif untuk jadwal ini di tanggal ini
+            final existing =
+                await supabase
+                    .from('permohonan_izin')
+                    .select()
+                    .eq('guru_id', user['profil']['id'])
+                    .eq('jadwal_id', j['id'])
+                    .eq(
+                      'tanggal_efektif',
+                      DateFormat('yyyy-MM-dd').format(date),
+                    )
+                    .inFilter('status', [
+                      'menunggu',
+                      'disetujui',
+                    ]) // Perubahan: cek status disetujui juga
+                    .maybeSingle();
+
+            if (existing == null) {
+              insertData.add({
+                'guru_id': user['profil']['id'],
+                'jadwal_id': j['id'],
+                'jenis_izin': _jenisIzin,
+                'tanggal_mulai': DateFormat(
+                  'yyyy-MM-dd',
+                ).format(_tanggalIzin!.start),
+                'tanggal_selesai': DateFormat(
+                  'yyyy-MM-dd',
+                ).format(_tanggalIzin!.end),
+                'tanggal_efektif': DateFormat('yyyy-MM-dd').format(date),
+                'alasan': _alasanController.text,
+                'status': 'menunggu',
+              });
+            }
+          }
+        }
+      }
+
+      if (insertData.isEmpty) {
+        throw 'Anda sudah memiliki permohonan izin aktif untuk semua jadwal di tanggal tersebut';
+      }
+
+      await supabase.from('permohonan_izin').insert(insertData);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,6 +120,9 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
         _tanggalIzin = null;
         _jenisIzin = null;
       });
+
+      // Perbaikan: Gunakan refresh dengan benar
+      Future.microtask(() => ref.refresh(jadwalIzinProvider));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
