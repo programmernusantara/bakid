@@ -1,4 +1,4 @@
-// lib/features/guru/absen/absen_page.dart
+import 'package:bakid/core/services/auth_service.dart';
 import 'package:bakid/features/auth/auth_providers.dart';
 import 'package:bakid/features/guru/absen/absen_service.dart';
 import 'package:flutter/material.dart';
@@ -6,14 +6,57 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
-class AbsenPage extends ConsumerStatefulWidget {
-  const AbsenPage({super.key});
+class AbsenTabPage extends ConsumerStatefulWidget {
+  const AbsenTabPage({super.key});
 
   @override
-  ConsumerState<AbsenPage> createState() => _AbsenPageState();
+  ConsumerState<AbsenTabPage> createState() => _AbsenTabPageState();
 }
 
-class _AbsenPageState extends ConsumerState<AbsenPage> {
+class _AbsenTabPageState extends ConsumerState<AbsenTabPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Absen', icon: Icon(Icons.fingerprint)),
+            Tab(text: 'Riwayat', icon: Icon(Icons.history)),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: const [AbsenContent(), RiwayatAbsenContent()],
+      ),
+    );
+  }
+}
+
+class AbsenContent extends ConsumerStatefulWidget {
+  const AbsenContent({super.key});
+
+  @override
+  ConsumerState<AbsenContent> createState() => _AbsenContentState();
+}
+
+class _AbsenContentState extends ConsumerState<AbsenContent> {
   bool _isLoading = false;
   String _errorMessage = '';
   String _successMessage = '';
@@ -32,13 +75,39 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+      _successMessage = '';
+    });
+
     try {
+      final supabase = ref.read(supabaseProvider);
+      final profilResponse =
+          await supabase
+              .from('profil_guru')
+              .select()
+              .eq('user_id', user['id'])
+              .maybeSingle();
+
+      if (profilResponse == null) {
+        setState(() => _errorMessage = 'Profil guru tidak ditemukan');
+        return;
+      }
+
+      final guruId = profilResponse['id'];
       final absenService = ref.read(absenServiceProvider);
-      final jadwal = await absenService.getJadwalHariIni(user['id']);
-      setState(() => _jadwalHariIni = jadwal);
+      final jadwal = await absenService.getJadwalHariIni(guruId);
+
+      setState(() {
+        _jadwalHariIni = jadwal;
+        if (_jadwalHariIni.isNotEmpty) {
+          _selectedJadwal = _jadwalHariIni.first;
+        }
+      });
     } catch (e) {
       setState(() => _errorMessage = 'Gagal memuat jadwal: $e');
+      debugPrint('Error _loadJadwalHariIni: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -86,11 +155,25 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
+      final profilResponse =
+          await supabase
+              .from('profil_guru')
+              .select()
+              .eq('user_id', user['id'])
+              .maybeSingle();
+
+      if (profilResponse == null) {
+        setState(() => _errorMessage = 'Profil guru tidak ditemukan');
+        return;
+      }
+
+      final guruId = profilResponse['id'];
       final absenService = ref.read(absenServiceProvider);
 
       // Cek izin terlebih dahulu
       final hasIzin = await absenService.cekIzinDisetujui(
-        user['id'],
+        guruId,
         _selectedJadwal!['id'],
         DateTime.now(),
       );
@@ -105,7 +188,7 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
       }
 
       final result = await absenService.absen(
-        guruId: user['id'],
+        guruId: guruId,
         jadwalId: _selectedJadwal!['id'],
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
@@ -113,7 +196,8 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
       );
 
       setState(() {
-        _successMessage = 'Absensi berhasil: ${result['status']}';
+        _successMessage =
+            'Absensi berhasil: ${_formatStatus(result['status'])}';
         _loadJadwalHariIni(); // Refresh data
       });
     } catch (e) {
@@ -124,25 +208,45 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
   }
 
   String _formatTime(String time) {
-    return DateFormat('HH:mm').format(DateTime.parse('1970-01-01 $time'));
+    try {
+      return DateFormat('HH:mm').format(DateTime.parse('1970-01-01 $time'));
+    } catch (e) {
+      return time;
+    }
+  }
+
+  String _formatStatus(String status) {
+    switch (status) {
+      case 'hadir':
+        return 'Hadir';
+      case 'terlambat':
+        return 'Terlambat';
+      case 'alpa':
+        return 'Alpa';
+      case 'izin':
+        return 'Izin';
+      default:
+        return status;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    final theme = Theme.of(context);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Absensi Guru',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-
           if (_errorMessage.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Text(
                 _errorMessage,
                 style: const TextStyle(color: Colors.red),
@@ -150,8 +254,13 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
             ),
 
           if (_successMessage.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Text(
                 _successMessage,
                 style: const TextStyle(color: Colors.green),
@@ -161,11 +270,24 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
           if (_isLoading) const Center(child: CircularProgressIndicator()),
 
           if (!_isLoading && _jadwalHariIni.isEmpty)
-            const Center(child: Text('Tidak ada jadwal mengajar hari ini')),
+            Column(
+              children: [
+                const Text(
+                  'Tidak ada jadwal mengajar hari ini.',
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: _loadJadwalHariIni,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Muat Ulang'),
+                ),
+              ],
+            ),
 
           if (_jadwalHariIni.isNotEmpty) ...[
             const Text(
-              'Pilih Jadwal:',
+              'Pilih Jadwal',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -173,14 +295,13 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
               value: _selectedJadwal,
               items:
                   _jadwalHariIni.map((jadwal) {
-                    final mataPelajaran =
-                        jadwal['mata_pelajaran']?['nama'] ?? 'Unknown';
-                    final kelas = jadwal['kelas']?['nama'] ?? 'Unknown';
-                    return DropdownMenuItem<Map<String, dynamic>>(
+                    final mapel = jadwal['mata_pelajaran']?['nama'] ?? '-';
+                    final kelas = jadwal['kelas']?['nama'] ?? '-';
+                    final mulai = _formatTime(jadwal['waktu_mulai'] ?? '');
+                    final selesai = _formatTime(jadwal['waktu_selesai'] ?? '');
+                    return DropdownMenuItem(
                       value: jadwal,
-                      child: Text(
-                        '$mataPelajaran - $kelas (${_formatTime(jadwal['waktu_mulai'])}- ${_formatTime(jadwal['waktu_selesai'])})',
-                      ),
+                      child: Text('$mapel - $kelas ($mulai - $selesai)'),
                     );
                   }).toList(),
               onChanged: (value) => setState(() => _selectedJadwal = value),
@@ -192,70 +313,235 @@ class _AbsenPageState extends ConsumerState<AbsenPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            if (_selectedJadwal != null) ...[
+            if (_selectedJadwal != null)
               Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Detail Jadwal',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                      Text('Detail Jadwal', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Text(
-                        'Mata Pelajaran: ${_selectedJadwal!['mata_pelajaran']?['nama'] ?? 'Unknown'}',
+                      _infoRow(
+                        'Mata Pelajaran',
+                        _selectedJadwal!['mata_pelajaran']?['nama'],
                       ),
-                      Text(
-                        'Kelas: ${_selectedJadwal!['kelas']?['nama'] ?? 'Unknown'}',
+                      _infoRow('Kelas', _selectedJadwal!['kelas']?['nama']),
+                      _infoRow(
+                        'Waktu',
+                        '${_formatTime(_selectedJadwal!['waktu_mulai'])} - ${_formatTime(_selectedJadwal!['waktu_selesai'])}',
                       ),
-                      Text(
-                        'Waktu: ${_formatTime(_selectedJadwal!['waktu_mulai'])} - ${_formatTime(_selectedJadwal!['waktu_selesai'])}',
+                      _infoRow(
+                        'Lokasi Absen',
+                        _selectedJadwal!['lokasi_absen']?['nama'],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Lokasi Absen:',
-                        style: Theme.of(context).textTheme.titleSmall,
+                      _infoRow(
+                        'Radius',
+                        '${_selectedJadwal!['lokasi_absen']?['radius'] ?? '-'} meter',
                       ),
-                      Text(
-                        '${_selectedJadwal!['lokasi_absen']?['nama'] ?? 'Unknown'}',
-                      ),
-                      Text(
-                        'Radius: ${_selectedJadwal!['lokasi_absen']?['radius_meter'] ?? 0} meter',
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Lokasi Anda Sekarang:',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      if (_currentPosition != null)
-                        Text(
-                          '${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}',
-                        ),
-                      if (_currentPosition == null)
-                        const Text('Mendeteksi lokasi...'),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _handleAbsen,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('ABSEN SEKARANG'),
+            const SizedBox(height: 16),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _handleAbsen,
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Absen Sekarang'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 16),
                 ),
               ),
-            ],
+            ),
           ],
         ],
       ),
     );
+  }
+
+  Widget _infoRow(String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Flexible(
+            child: Text(
+              value?.toString() ?? '-',
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RiwayatAbsenContent extends ConsumerStatefulWidget {
+  const RiwayatAbsenContent({super.key});
+
+  @override
+  ConsumerState<RiwayatAbsenContent> createState() =>
+      _RiwayatAbsenContentState();
+}
+
+class _RiwayatAbsenContentState extends ConsumerState<RiwayatAbsenContent> {
+  bool _isLoading = false;
+  String _errorMessage = '';
+  List<Map<String, dynamic>> _riwayatAbsen = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRiwayatAbsen();
+  }
+
+  Future<void> _loadRiwayatAbsen() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final supabase = ref.read(supabaseProvider);
+      final profilResponse =
+          await supabase
+              .from('profil_guru')
+              .select()
+              .eq('user_id', user['id'])
+              .maybeSingle();
+
+      if (profilResponse == null) {
+        setState(() => _errorMessage = 'Profil guru tidak ditemukan');
+        return;
+      }
+
+      final guruId = profilResponse['id'];
+      final absenService = ref.read(absenServiceProvider);
+      final riwayat = await absenService.getRiwayatAbsen(guruId);
+      setState(() => _riwayatAbsen = riwayat);
+    } catch (e) {
+      setState(() => _errorMessage = 'Gagal memuat riwayat absen: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  String _formatStatus(String status) {
+    switch (status) {
+      case 'hadir':
+        return 'Hadir';
+      case 'terlambat':
+        return 'Terlambat';
+      case 'alpa':
+        return 'Alpa';
+      case 'izin':
+        return 'Izin';
+      default:
+        return status;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'hadir':
+        return Colors.green;
+      case 'terlambat':
+        return Colors.orange;
+      case 'alpa':
+        return Colors.red;
+      case 'izin':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _errorMessage.isNotEmpty
+        ? Center(child: Text(_errorMessage))
+        : _riwayatAbsen.isEmpty
+        ? const Center(child: Text('Tidak ada riwayat absensi'))
+        : RefreshIndicator(
+          onRefresh: _loadRiwayatAbsen,
+          child: ListView.builder(
+            itemCount: _riwayatAbsen.length,
+            itemBuilder: (context, index) {
+              final absen = _riwayatAbsen[index];
+              final jadwal = absen['jadwal'] ?? {};
+              final mataPelajaran = jadwal['mata_pelajaran']?['nama'] ?? '-';
+              final kelas = jadwal['kelas']?['nama'] ?? '-';
+              final tanggal = DateFormat(
+                'dd MMM yyyy',
+              ).format(DateTime.parse(absen['tanggal']));
+              final waktu = absen['waktu_absen'] ?? '';
+
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListTile(
+                  title: Text(mataPelajaran),
+                  subtitle: Text('$kelas • $tanggal'),
+                  trailing: Chip(
+                    label: Text(
+                      _formatStatus(absen['status']),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: _getStatusColor(absen['status']),
+                  ),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder:
+                          (context) => AlertDialog(
+                            title: Text(mataPelajaran),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Kelas: $kelas'),
+                                Text('Tanggal: $tanggal'),
+                                Text('Waktu Absen: $waktu'),
+                                Text(
+                                  'Status: ${_formatStatus(absen['status'])}',
+                                ),
+                                if (absen['latitude'] != null &&
+                                    absen['longitude'] != null)
+                                  Text(
+                                    'Lokasi: ${absen['latitude']}, ${absen['longitude']}',
+                                  ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('TUTUP'),
+                              ),
+                            ],
+                          ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        );
   }
 }

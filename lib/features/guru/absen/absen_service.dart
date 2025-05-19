@@ -1,8 +1,8 @@
-// lib/core/services/absen_service.dart
 import 'package:bakid/core/services/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/foundation.dart';
 
 final absenServiceProvider = Provider<AbsenService>((ref) {
   final supabase = ref.watch(supabaseProvider);
@@ -14,7 +14,6 @@ class AbsenService {
 
   AbsenService(this._supabase);
 
-  // Fungsi untuk menghitung jarak antara dua titik koordinat
   double _calculateDistance(
     double lat1,
     double lon1,
@@ -24,28 +23,34 @@ class AbsenService {
     return Geolocator.distanceBetween(lat1, lon1, lat2, lon2);
   }
 
-  // Fungsi untuk mendapatkan jadwal mengajar hari ini untuk guru tertentu
   Future<List<Map<String, dynamic>>> getJadwalHariIni(String guruId) async {
-    final now = DateTime.now();
-    final hariIni = now.weekday; // 1-7 (Senin-Minggu)
+    try {
+      final response = await _supabase
+          .from('jadwal_mengajar')
+          .select('''
+            *,
+            lokasi_absen:lokasi_absen_id(*),
+            mata_pelajaran:mata_pelajaran_id(nama),
+            kelas:kelas_id(nama)
+          ''')
+          .eq('guru_id', guruId)
+          .eq('hari_dalam_minggu', DateTime.now().weekday)
+          .order('waktu_mulai');
 
-    final response = await _supabase
-        .from('jadwal_mengajar')
-        .select('''
-          *, 
-          lokasi_absen:lokasi_absen_id(*),
-          mata_pelajaran:mata_pelajaran_id(*),
-          kelas:kelas_id(*)
-        ''')
-        .eq('guru_id', guruId)
-        .eq('hari_dalam_minggu', hariIni)
-        .eq('aktif', true)
-        .order('waktu_mulai');
+      if (kDebugMode) {
+        print('Jadwal hari ini untuk guru $guruId:');
+        print(response);
+      }
 
-    return response;
+      return (response as List).cast<Map<String, dynamic>>();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getJadwalHariIni: $e');
+      }
+      rethrow;
+    }
   }
 
-  // Fungsi untuk memeriksa apakah guru sudah memiliki izin yang disetujui
   Future<bool> cekIzinDisetujui(
     String guruId,
     String jadwalId,
@@ -62,7 +67,6 @@ class AbsenService {
     return response.isNotEmpty;
   }
 
-  // Fungsi untuk melakukan absensi
   Future<Map<String, dynamic>> absen({
     required String guruId,
     required String jadwalId,
@@ -70,103 +74,118 @@ class AbsenService {
     required double longitude,
     required DateTime waktuAbsen,
   }) async {
-    // 1. Ambil data jadwal
-    final jadwal =
-        await _supabase
-            .from('jadwal_mengajar')
-            .select('*, lokasi_absen:lokasi_absen_id(*)')
-            .eq('id', jadwalId)
-            .single();
+    try {
+      // 1. Ambil data jadwal
+      final jadwal =
+          await _supabase
+              .from('jadwal_mengajar')
+              .select('*, lokasi_absen:lokasi_absen_id(*)')
+              .eq('id', jadwalId)
+              .single();
 
-    final lokasiAbsen = jadwal['lokasi_absen'];
-    if (lokasiAbsen == null) {
-      throw 'Lokasi absen belum ditentukan untuk jadwal ini';
+      final lokasiAbsen = jadwal['lokasi_absen'];
+      if (lokasiAbsen == null) {
+        throw 'Lokasi absen belum ditentukan untuk jadwal ini';
+      }
+
+      // 2. Validasi lokasi
+      final jarak = _calculateDistance(
+        latitude,
+        longitude,
+        lokasiAbsen['latitude'],
+        lokasiAbsen['longitude'],
+      );
+
+      if (jarak > lokasiAbsen['radius_meter']) {
+        throw 'Anda berada di luar jangkauan lokasi absen. Jarak: ${jarak.toStringAsFixed(0)} meter dari lokasi yang ditentukan';
+      }
+
+      // 3. Validasi waktu
+      final waktuMulai = DateTime.parse('1970-01-01 ${jadwal['waktu_mulai']}');
+      final waktuSelesai = DateTime.parse(
+        '1970-01-01 ${jadwal['waktu_selesai']}',
+      );
+      final waktuAbsenTime = DateTime.parse(
+        '1970-01-01 ${waktuAbsen.toIso8601String().split('T')[1]}',
+      );
+
+      String status;
+      final waktuMulaiMinus10 = waktuMulai.subtract(
+        const Duration(minutes: 10),
+      );
+
+      if (waktuAbsenTime.isBefore(waktuMulaiMinus10)) {
+        throw 'Belum waktunya absen. Absensi dibuka 10 menit sebelum kelas dimulai';
+      } else if (waktuAbsenTime.isAfter(waktuMulaiMinus10) &&
+          waktuAbsenTime.isBefore(waktuMulai)) {
+        status = 'hadir';
+      } else if (waktuAbsenTime.isAfter(waktuMulai) &&
+          waktuAbsenTime.isBefore(waktuSelesai)) {
+        status = 'terlambat';
+      } else {
+        throw 'Absensi ditutup. Waktu absensi sudah melebihi waktu selesai kelas';
+      }
+
+      // 4. Cek absensi sebelumnya
+      final tanggal = DateTime.now();
+      final existingAbsen =
+          await _supabase
+              .from('kehadiran_guru')
+              .select()
+              .eq('guru_id', guruId)
+              .eq('jadwal_id', jadwalId)
+              .eq('tanggal', tanggal.toIso8601String().split('T')[0])
+              .maybeSingle();
+
+      if (existingAbsen != null) {
+        throw 'Anda sudah melakukan absensi untuk jadwal ini hari ini';
+      }
+
+      // 5. Simpan data absensi
+      final data = {
+        'guru_id': guruId,
+        'jadwal_id': jadwalId,
+        'tanggal': tanggal.toIso8601String().split('T')[0],
+        'status': status,
+        'waktu_absen': waktuAbsen.toIso8601String().split('T')[1],
+        'latitude': latitude,
+        'longitude': longitude,
+      };
+
+      final response =
+          await _supabase.from('kehadiran_guru').insert(data).select().single();
+
+      return response;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error absen: $e');
+      }
+      rethrow;
     }
-
-    // 2. Validasi lokasi
-    final jarak = _calculateDistance(
-      latitude,
-      longitude,
-      lokasiAbsen['latitude'],
-      lokasiAbsen['longitude'],
-    );
-
-    if (jarak > lokasiAbsen['radius_meter']) {
-      throw 'Anda berada di luar jangkauan lokasi absen. Jarak: ${jarak.toStringAsFixed(0)} meter dari lokasi yang ditentukan';
-    }
-
-    // 3. Validasi waktu
-    final waktuMulai = DateTime.parse('1970-01-01 ${jadwal['waktu_mulai']}');
-    final waktuSelesai = DateTime.parse(
-      '1970-01-01 ${jadwal['waktu_selesai']}',
-    );
-    final waktuAbsenTime = DateTime.parse(
-      '1970-01-01 ${waktuAbsen.toIso8601String().split('T')[1]}',
-    );
-
-    String status;
-    final waktuMulaiMinus10 = waktuMulai.subtract(const Duration(minutes: 10));
-
-    if (waktuAbsenTime.isBefore(waktuMulaiMinus10)) {
-      throw 'Belum waktunya absen. Absensi dibuka 10 menit sebelum kelas dimulai';
-    } else if (waktuAbsenTime.isAfter(waktuMulaiMinus10) &&
-        waktuAbsenTime.isBefore(waktuMulai)) {
-      status = 'hadir';
-    } else if (waktuAbsenTime.isAfter(waktuMulai) &&
-        waktuAbsenTime.isBefore(waktuSelesai)) {
-      status = 'terlambat';
-    } else {
-      throw 'Absensi ditutup. Waktu absensi sudah melebihi waktu selesai kelas';
-    }
-
-    // 4. Cek apakah sudah ada absensi untuk jadwal ini hari ini
-    final tanggal = DateTime.now();
-    final existingAbsen =
-        await _supabase
-            .from('kehadiran_guru')
-            .select()
-            .eq('guru_id', guruId)
-            .eq('jadwal_id', jadwalId)
-            .eq('tanggal', tanggal.toIso8601String().split('T')[0])
-            .maybeSingle();
-
-    if (existingAbsen != null) {
-      throw 'Anda sudah melakukan absensi untuk jadwal ini hari ini';
-    }
-
-    // 5. Simpan data absensi
-    final data = {
-      'guru_id': guruId,
-      'jadwal_id': jadwalId,
-      'tanggal': tanggal.toIso8601String().split('T')[0],
-      'status': status,
-      'waktu_absen': waktuAbsen.toIso8601String().split('T')[1],
-      'latitude': latitude,
-      'longitude': longitude,
-    };
-
-    final response =
-        await _supabase.from('kehadiran_guru').insert(data).select().single();
-
-    return response;
   }
 
-  // Fungsi untuk mendapatkan riwayat absensi
   Future<List<Map<String, dynamic>>> getRiwayatAbsen(
     String guruId, {
     int limit = 30,
   }) async {
-    final response = await _supabase
-        .from('kehadiran_guru')
-        .select('''
-          *, 
-          jadwal:jadwal_id(*, mata_pelajaran:mata_pelajaran_id(*), kelas:kelas_id(*))
-        ''')
-        .eq('guru_id', guruId)
-        .order('tanggal', ascending: false)
-        .order('waktu_absen', ascending: false)
-        .limit(limit);
+    try {
+      final response = await _supabase
+          .from('kehadiran_guru')
+          .select('''
+            *, 
+            jadwal:jadwal_id(*, mata_pelajaran:mata_pelajaran_id(nama), kelas:kelas_id(nama))
+          ''')
+          .eq('guru_id', guruId)
+          .order('tanggal', ascending: false)
+          .order('waktu_absen', ascending: false)
+          .limit(limit);
 
-    return response;
+      return (response as List).cast<Map<String, dynamic>>();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getRiwayatAbsen: $e');
+      }
+      rethrow;
+    }
   }
 }

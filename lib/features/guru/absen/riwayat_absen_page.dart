@@ -1,4 +1,4 @@
-// lib/features/guru/absen/riwayat_absen_page.dart
+import 'package:bakid/core/services/auth_service.dart';
 import 'package:bakid/features/auth/auth_providers.dart';
 import 'package:bakid/features/guru/absen/absen_service.dart';
 import 'package:flutter/material.dart';
@@ -33,8 +33,22 @@ class _RiwayatAbsenPageState extends ConsumerState<RiwayatAbsenPage> {
     });
 
     try {
+      final supabase = ref.read(supabaseProvider);
+      final profilResponse =
+          await supabase
+              .from('profil_guru')
+              .select()
+              .eq('user_id', user['id'])
+              .maybeSingle();
+
+      if (profilResponse == null) {
+        setState(() => _errorMessage = 'Profil guru tidak ditemukan');
+        return;
+      }
+
+      final guruId = profilResponse['id'];
       final absenService = ref.read(absenServiceProvider);
-      final riwayat = await absenService.getRiwayatAbsen(user['id']);
+      final riwayat = await absenService.getRiwayatAbsen(guruId);
       setState(() => _riwayatAbsen = riwayat);
     } catch (e) {
       setState(() => _errorMessage = 'Gagal memuat riwayat absen: $e');
@@ -98,8 +112,8 @@ class _RiwayatAbsenPageState extends ConsumerState<RiwayatAbsenPage> {
                   final absen = _riwayatAbsen[index];
                   final jadwal = absen['jadwal'] ?? {};
                   final mataPelajaran =
-                      jadwal['mata_pelajaran']?['nama'] ?? 'Unknown';
-                  final kelas = jadwal['kelas']?['nama'] ?? 'Unknown';
+                      jadwal['mata_pelajaran']?['nama'] ?? '-';
+                  final kelas = jadwal['kelas']?['nama'] ?? '-';
                   final tanggal = DateFormat(
                     'dd MMM yyyy',
                   ).format(DateTime.parse(absen['tanggal']));

@@ -1,8 +1,9 @@
 // Update lib/features/guru/dashboard/guru_dashboard.dart
 import 'package:bakid/features/guru/absen/absen_page.dart';
-import 'package:bakid/features/guru/absen/riwayat_absen_page.dart';
 import 'package:bakid/features/guru/home/home_page.dart';
+import 'package:bakid/features/guru/izin/perizinan_page.dart';
 import 'package:bakid/features/guru/jurnal/jurnal_page.dart';
+import 'package:bakid/features/guru/kehadiran/absensi_siswa_page.dart';
 import 'package:flutter/material.dart';
 
 class GuruDashboard extends StatefulWidget {
@@ -17,18 +18,20 @@ class _GuruDashboardState extends State<GuruDashboard> {
 
   final List<Widget> _pages = const [
     HomePage(),
+    AbsenTabPage(),
+    AbsensiSiswaPage(),
     JurnalPage(),
-    AbsenPage(),
-    RiwayatAbsenPage(),
+    PerizinanPage(),
   ];
 
-  final List<String> _titles = ['Home', 'Jurnal', 'Absen', 'Kehadiran'];
+  final List<String> _titles = ['Home', 'Absen', 'Kehadiran', 'Jurnal', 'Izin'];
 
   final List<IconData> _icons = [
     Icons.home_outlined,
-    Icons.edit_calendar_outlined,
     Icons.fingerprint,
-    Icons.checklist_rtl,
+    Icons.person,
+    Icons.edit_calendar_outlined,
+    Icons.assignment,
   ];
 
   void _onTabSelected(int index) {
@@ -38,30 +41,6 @@ class _GuruDashboardState extends State<GuruDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        centerTitle: false,
-        title: Text(
-          _titles[_selectedIndex],
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_none_outlined,
-              color: Colors.black87,
-            ),
-            onPressed: () {
-              // Implementasi halaman notifikasi
-            },
-          ),
-        ],
-      ),
       backgroundColor: Colors.grey[200],
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
