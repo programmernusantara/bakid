@@ -1,3 +1,6 @@
+// Update lib/features/guru/dashboard/guru_dashboard.dart
+import 'package:bakid/features/guru/absen/absen_page.dart';
+import 'package:bakid/features/guru/absen/riwayat_absen_page.dart';
 import 'package:bakid/features/guru/home/home_page.dart';
 import 'package:bakid/features/guru/jurnal/jurnal_page.dart';
 import 'package:flutter/material.dart';
@@ -12,22 +15,20 @@ class GuruDashboard extends StatefulWidget {
 class _GuruDashboardState extends State<GuruDashboard> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = const [HomePage(), JurnalPage()];
-
-  final List<String> _titles = [
-    'Home',
-    'Jurnal',
-    'Absen',
-    'Kehadiran',
-    'Perizinan',
+  final List<Widget> _pages = const [
+    HomePage(),
+    JurnalPage(),
+    AbsenPage(),
+    RiwayatAbsenPage(),
   ];
+
+  final List<String> _titles = ['Home', 'Jurnal', 'Absen', 'Kehadiran'];
 
   final List<IconData> _icons = [
     Icons.home_outlined,
     Icons.edit_calendar_outlined,
     Icons.fingerprint,
     Icons.checklist_rtl,
-    Icons.assignment_turned_in_outlined,
   ];
 
   void _onTabSelected(int index) {

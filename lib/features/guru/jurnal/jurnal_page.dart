@@ -47,7 +47,6 @@ class _JurnalPageState extends ConsumerState<JurnalPage> {
               MaterialPageRoute(builder: (context) => const JurnalForm()),
             ),
       ),
-
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(jurnalProvider(guruId).future),
         child: _buildJurnalList(jurnalAsync),
@@ -72,7 +71,7 @@ class _JurnalPageState extends ConsumerState<JurnalPage> {
               padding: const EdgeInsets.only(bottom: 16),
               child: JurnalCard(
                 jurnal: jurnal,
-                onTap:
+                onEdit:
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -164,7 +163,7 @@ class JurnalSearchDelegate extends SearchDelegate {
             final jurnal = filteredList[index];
             return JurnalCard(
               jurnal: jurnal,
-              onTap: () {
+              onEdit: () {
                 close(context, null);
                 Navigator.push(
                   context,

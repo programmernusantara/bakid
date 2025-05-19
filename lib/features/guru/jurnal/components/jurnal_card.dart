@@ -3,9 +3,9 @@ import 'package:intl/intl.dart';
 
 class JurnalCard extends StatelessWidget {
   final Map<String, dynamic> jurnal;
-  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
 
-  const JurnalCard({super.key, required this.jurnal, this.onTap});
+  const JurnalCard({super.key, required this.jurnal, this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -25,108 +25,145 @@ class JurnalCard extends StatelessWidget {
     final hariIndex = jadwal?['hari_dalam_minggu'] as int?;
 
     return Card(
-      color: Colors.white,
-      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          mataPelajaran?['nama'] ?? 'Mata Pelajaran',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header dengan mata pelajaran dan kelas
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        mataPelajaran?['nama'] ?? 'Mata Pelajaran',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Colors.blue,
                         ),
-                        if (kelas != null)
-                          Text(
-                            kelas['nama'] ?? 'Kelas',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        kelas?['nama'] ?? 'Kelas',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                    ],
                   ),
+                ),
+                if (onEdit != null)
                   IconButton(
                     icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: onTap,
+                    onPressed: onEdit,
                   ),
-                ],
+              ],
+            ),
+
+            const Divider(height: 24, thickness: 1),
+
+            // Informasi waktu
+            Row(
+              children: [
+                _buildInfoIconText(
+                  icon: Icons.calendar_today,
+                  text:
+                      tanggal != null
+                          ? DateFormat(
+                            'EEEE, d MMMM y',
+                            'id_ID',
+                          ).format(tanggal)
+                          : 'Tanggal tidak tersedia',
+                ),
+                const SizedBox(width: 16),
+                _buildInfoIconText(
+                  icon: Icons.schedule,
+                  text:
+                      hariIndex != null && jadwal?['waktu_mulai'] != null
+                          ? '${hari[hariIndex - 1]}, ${jadwal!['waktu_mulai']}-${jadwal['waktu_selesai']}'
+                          : 'Waktu tidak tersedia',
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Konten jurnal
+            _buildJournalSection(
+              title: 'Materi yang Diajarkan',
+              content: jurnal['materi_yang_dipelajari'] ?? '-',
+              icon: Icons.book,
+            ),
+
+            if (jurnal['kendala'] != null &&
+                jurnal['kendala'].toString().isNotEmpty)
+              _buildJournalSection(
+                title: 'Kendala',
+                content: jurnal['kendala'],
+                icon: Icons.warning_amber,
               ),
-              const SizedBox(height: 12),
 
-              // Info Waktu dan Tanggal
-              Row(
-                children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[500]),
-                  const SizedBox(width: 8),
-                  Text(
-                    tanggal != null
-                        ? DateFormat('d MMM y', 'id_ID').format(tanggal)
-                        : 'Tanggal tidak tersedia',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                  const Spacer(),
-                  Icon(Icons.schedule, size: 16, color: Colors.grey[500]),
-                  const SizedBox(width: 8),
-                  Text(
-                    hariIndex != null && jadwal?['waktu_mulai'] != null
-                        ? '${hari[hariIndex - 1]}, ${jadwal!['waktu_mulai']}-${jadwal['waktu_selesai']}'
-                        : 'Waktu tidak tersedia',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                ],
+            if (jurnal['solusi'] != null &&
+                jurnal['solusi'].toString().isNotEmpty)
+              _buildJournalSection(
+                title: 'Solusi',
+                content: jurnal['solusi'],
+                icon: Icons.lightbulb,
               ),
-              const SizedBox(height: 16),
-
-              // Materi
-              _buildInfoItem('Materi', jurnal['materi_yang_dipelajari']),
-
-              // Kendala jika ada
-              if (jurnal['kendala'] != null &&
-                  jurnal['kendala'].toString().isNotEmpty)
-                _buildInfoItem('Kendala', jurnal['kendala']),
-
-              // Solusi jika ada
-              if (jurnal['solusi'] != null &&
-                  jurnal['solusi'].toString().isNotEmpty)
-                _buildInfoItem('Solusi', jurnal['solusi']),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoItem(String label, String? value) {
+  Widget _buildInfoIconText({required IconData icon, required String text}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Text(text, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+      ],
+    );
+  }
+
+  Widget _buildJournalSection({
+    required String title,
+    required String content,
+    required IconData icon,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-              fontSize: 13,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 18, color: Colors.blue),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(value ?? '-', style: const TextStyle(fontSize: 14)),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(content, style: const TextStyle(fontSize: 14)),
+          ),
         ],
       ),
     );
