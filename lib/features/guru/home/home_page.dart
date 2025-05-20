@@ -21,32 +21,34 @@ class HomePage extends ConsumerWidget {
     final jadwalAsync = ref.watch(jadwalHariIniProvider);
     final pengumumanAsync = ref.watch(pengumumanProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Profile Section
-          ProfileHeader(profile: profile, user: user),
-          const SizedBox(height: 24),
+    return Scaffold(
+      backgroundColor: Colors.grey[200],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ProfileHeader(profile: profile, user: user),
+              const SizedBox(height: 24),
 
-          // Schedule Section
-          const SectionHeader(
-            title: 'Jadwal Hari Ini',
-            icon: Icons.calendar_today_outlined,
-          ),
-          const SizedBox(height: 12),
-          _ScheduleSection(jadwalAsync: jadwalAsync),
-          const SizedBox(height: 24),
+              const SectionHeader(
+                title: 'Jadwal Hari Ini',
+                icon: Icons.calendar_today_outlined,
+              ),
+              const SizedBox(height: 12),
+              _ScheduleSection(jadwalAsync: jadwalAsync),
+              const SizedBox(height: 24),
 
-          // Announcement Section
-          const SectionHeader(
-            title: 'Pengumuman Terkini',
-            icon: Icons.announcement_outlined,
+              const SectionHeader(
+                title: 'Pengumuman Terkini',
+                icon: Icons.announcement_outlined,
+              ),
+              const SizedBox(height: 12),
+              _AnnouncementSection(pengumumanAsync: pengumumanAsync),
+            ],
           ),
-          const SizedBox(height: 12),
-          _AnnouncementSection(pengumumanAsync: pengumumanAsync),
-        ],
+        ),
       ),
     );
   }

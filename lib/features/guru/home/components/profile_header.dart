@@ -9,24 +9,26 @@ class ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: Colors.grey[300]!),
       ),
       child: Row(
         children: [
-          if (profile?['foto_url'] != null)
-            CircleAvatar(
-              radius: 32,
-              backgroundImage: NetworkImage(profile!['foto_url']),
-            )
-          else
-            CircleAvatar(
-              radius: 32,
-              backgroundColor: Colors.grey[200],
-              child: Icon(Icons.person, color: Colors.grey[600], size: 30),
-            ),
+          CircleAvatar(
+            radius: 30,
+            backgroundImage:
+                profile?['foto_url'] != null
+                    ? NetworkImage(profile!['foto_url'])
+                    : null,
+            backgroundColor: Colors.grey[200],
+            child:
+                profile?['foto_url'] == null
+                    ? Icon(Icons.person, size: 30, color: Colors.grey[600])
+                    : null,
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -35,8 +37,8 @@ class ProfileHeader extends StatelessWidget {
                 Text(
                   profile?['nama_lengkap'] ?? user?['nama'] ?? 'Guru',
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),

@@ -15,67 +15,88 @@ class AnnouncementCard extends StatelessWidget {
     this.date,
   });
 
+  void _showFullImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => Dialog(
+            backgroundColor: Colors.black,
+            insetPadding: EdgeInsets.zero,
+            child: Stack(
+              children: [
+                InteractiveViewer(
+                  child: Center(
+                    child: Image.network(imageUrl, fit: BoxFit.contain),
+                  ),
+                ),
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      child: Icon(Icons.close, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: Colors.grey[300]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withAlpha(100),
-                  shape: BoxShape.circle,
+          if (imageUrl != null)
+            GestureDetector(
+              onTap: () => _showFullImage(context, imageUrl!),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(14),
                 ),
-                child: Icon(
-                  Icons.campaign_outlined,
-                  size: 18,
-                  color: Colors.orange.withAlpha(100),
+                child: Image.network(
+                  imageUrl!,
+                  width: double.infinity,
+                  height: 180,
+                  fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
-              ),
-              if (date != null)
-                Text(
-                  DateFormat('dd/MM/yy').format(date!),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            style: TextStyle(color: Colors.grey[800], fontSize: 14),
-          ),
-          if (imageUrl != null && imageUrl!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                imageUrl!,
-                width: double.infinity,
-                height: 150,
-                fit: BoxFit.cover,
-              ),
+                const SizedBox(height: 6),
+                Text(content, style: TextStyle(color: Colors.grey[700])),
+                if (date != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    DateFormat('d MMM y, HH:mm').format(date!),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );

@@ -1,6 +1,5 @@
 import 'package:bakid/core/services/auth_service.dart';
 import 'package:bakid/features/guru/izin/izin_providers.dart';
-import 'package:bakid/features/guru/izin/jadwal_izin_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -215,15 +214,6 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 24),
-
-            // Jadwal yang Terpengaruh
-            const Text(
-              'Jadwal yang Terpengaruh:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const JadwalIzinDropdown(),
             const SizedBox(height: 24),
 
             // Tombol Submit

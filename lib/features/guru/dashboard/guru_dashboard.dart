@@ -1,4 +1,4 @@
-// Update lib/features/guru/dashboard/guru_dashboard.dart
+import 'package:animations/animations.dart';
 import 'package:bakid/features/guru/absen/absen_page.dart';
 import 'package:bakid/features/guru/home/home_page.dart';
 import 'package:bakid/features/guru/izin/perizinan_page.dart';
@@ -24,41 +24,50 @@ class _GuruDashboardState extends State<GuruDashboard> {
     PerizinanPage(),
   ];
 
-  final List<String> _titles = ['Home', 'Absen', 'Kehadiran', 'Jurnal', 'Izin'];
+  final List<String> _titles = ['Beranda', 'Absen', 'Siswa', 'Jurnal', 'Izin'];
 
   final List<IconData> _icons = [
-    Icons.home_outlined,
-    Icons.fingerprint,
-    Icons.person,
-    Icons.edit_calendar_outlined,
-    Icons.assignment,
+    Icons.dashboard_outlined,
+    Icons.how_to_reg_outlined,
+    Icons.group_outlined,
+    Icons.menu_book_outlined,
+    Icons.event_note_outlined,
   ];
 
   void _onTabSelected(int index) {
-    setState(() => _selectedIndex = index);
+    if (_selectedIndex != index) {
+      setState(() => _selectedIndex = index);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
+      backgroundColor: Colors.grey[100],
+      body: PageTransitionSwitcher(
+        duration: const Duration(milliseconds: 400),
+        transitionBuilder: (child, animation, secondaryAnimation) {
+          return FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          );
+        },
         child: _pages[_selectedIndex],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onTabSelected,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey[600],
-        elevation: 0,
+      bottomNavigationBar: NavigationBar(
+        height: 65,
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onTabSelected,
         backgroundColor: Colors.white,
-        selectedFontSize: 12,
-        unselectedFontSize: 11,
-        items: List.generate(_titles.length, (i) {
-          return BottomNavigationBarItem(
-            icon: Icon(_icons[i]),
+        surfaceTintColor: Colors.white,
+        indicatorColor: Colors.blue.withAlpha(100),
+        elevation: 1,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: List.generate(_titles.length, (i) {
+          return NavigationDestination(
+            icon: Icon(_icons[i], color: Colors.grey[600]),
+            selectedIcon: Icon(_icons[i], color: Colors.blueAccent),
             label: _titles[i],
           );
         }),

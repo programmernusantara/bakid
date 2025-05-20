@@ -23,6 +23,8 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
   final _namaAlpaController = TextEditingController();
 
   bool _isLoading = false;
+  String _errorMessage = '';
+  String _successMessage = '';
 
   Future<void> _submitAbsensi(Map<String, dynamic>? selectedJadwal) async {
     if (!_formKey.currentState!.validate()) return;
@@ -31,7 +33,6 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     final user = ref.read(currentUserProvider);
     if (user == null || user['profil'] == null) return;
 
-    // Validasi jumlah siswa
     final kelas = selectedJadwal['kelas'] as Map<String, dynamic>?;
     final jumlahSiswa = kelas?['jumlah_murid'] as int? ?? 0;
     final totalAbsen =
@@ -40,41 +41,41 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
         (int.tryParse(_jumlahAlpaController.text) ?? 0);
 
     if (jumlahSiswa > 0 && totalAbsen != jumlahSiswa) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Total absen ($totalAbsen) harus sama dengan jumlah siswa ($jumlahSiswa)',
-          ),
-        ),
+      setState(
+        () =>
+            _errorMessage =
+                'Total absen ($totalAbsen) harus sama dengan jumlah siswa ($jumlahSiswa)',
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+      _successMessage = '';
+    });
+
     try {
       final supabase = ref.read(supabaseProvider);
-      final selectedDate = ref.read(absensiSiswaDateProvider);
+      final currentDate = DateTime.now();
 
-      // Cek duplikasi absensi
       final existing =
           await supabase
               .from('rekap_absensi_siswa')
               .select()
               .eq('jadwal_id', selectedJadwal['id'])
-              .eq('tanggal', DateFormat('yyyy-MM-dd').format(selectedDate))
+              .eq('tanggal', DateFormat('yyyy-MM-dd').format(currentDate))
               .maybeSingle();
 
       if (existing != null) {
         throw 'Anda sudah mengisi absensi untuk kelas ini hari ini';
       }
 
-      // Simpan absensi
       await supabase.from('rekap_absensi_siswa').insert({
         'guru_id': user['profil']['id'],
         'jadwal_id': selectedJadwal['id'],
         'kelas_id': selectedJadwal['kelas_id'],
-        'tanggal': DateFormat('yyyy-MM-dd').format(selectedDate),
+        'tanggal': DateFormat('yyyy-MM-dd').format(currentDate),
         'jumlah_hadir': int.tryParse(_jumlahHadirController.text) ?? 0,
         'jumlah_izin': int.tryParse(_jumlahIzinController.text) ?? 0,
         'jumlah_alpa': int.tryParse(_jumlahAlpaController.text) ?? 0,
@@ -82,12 +83,7 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
         'nama_alpa': _namaAlpaController.text.trim(),
       });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Absensi berhasil disimpan')),
-      );
-
-      // Reset form
+      setState(() => _successMessage = 'Absensi berhasil disimpan');
       _formKey.currentState?.reset();
       _jumlahHadirController.clear();
       _jumlahIzinController.clear();
@@ -95,27 +91,9 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
       _jumlahAlpaController.clear();
       _namaAlpaController.clear();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      setState(() => _errorMessage = 'Error: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final selectedDate = ref.read(absensiSiswaDateProvider);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null && picked != selectedDate) {
-      ref.read(absensiSiswaDateProvider.notifier).state = picked;
+      setState(() => _isLoading = false);
     }
   }
 
@@ -131,97 +109,221 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedDate = ref.watch(absensiSiswaDateProvider);
+    final currentDate = DateTime.now();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Tanggal dan Jadwal
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  DateFormat(
-                    'EEEE, dd MMMM yyyy',
-                    'id_ID',
-                  ).format(selectedDate),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+    return Scaffold(
+      backgroundColor: Colors.grey[200], // Soft gray background
+
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          children: [
+            // Status messages
+            if (_errorMessage.isNotEmpty)
+              _buildStatusCard(
+                _errorMessage,
+                Colors.red[50]!,
+                Colors.red[700]!,
               ),
-              IconButton(
-                icon: const Icon(Icons.calendar_today),
-                onPressed: () => _selectDate(context),
+
+            if (_successMessage.isNotEmpty)
+              _buildStatusCard(
+                _successMessage,
+                Colors.green[50]!,
+                Colors.green[700]!,
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
 
-          // Dropdown Jadwal
-          const JadwalAbsensiDropdown(),
+            // Date Card
+            _buildDateCard(currentDate),
 
-          // Form Absensi
-          Consumer(
-            builder: (context, ref, _) {
-              final selectedJadwal = ref.watch(
-                absensiSiswaSelectedJadwalProvider,
-              );
-              return Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _buildNumberField(
-                      controller: _jumlahHadirController,
-                      label: 'Jumlah Hadir',
-                      max: selectedJadwal?['kelas']?['jumlah_murid'],
-                    ),
-                    const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-                    _buildNumberField(
-                      controller: _jumlahIzinController,
-                      label: 'Jumlah Izin',
-                      max: selectedJadwal?['kelas']?['jumlah_murid'],
-                    ),
-                    _buildNameField(
-                      controller: _namaIzinController,
-                      label: 'Nama Siswa Izin',
-                      hint: 'Pisahkan dengan koma',
-                    ),
-                    const SizedBox(height: 16),
+            // Jadwal Dropdown
+            const JadwalAbsensiDropdown(),
 
-                    _buildNumberField(
-                      controller: _jumlahAlpaController,
-                      label: 'Jumlah Alpa',
-                      max: selectedJadwal?['kelas']?['jumlah_murid'],
-                    ),
-                    _buildNameField(
-                      controller: _namaAlpaController,
-                      label: 'Nama Siswa Alpa',
-                      hint: 'Pisahkan dengan koma',
-                    ),
-                    const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed:
-                            _isLoading
-                                ? null
-                                : () => _submitAbsensi(selectedJadwal),
-                        child:
-                            _isLoading
-                                ? const CircularProgressIndicator()
-                                : const Text('SIMPAN ABSENSI'),
+            // Form Absensi
+            Consumer(
+              builder: (context, ref, _) {
+                final selectedJadwal = ref.watch(
+                  absensiSiswaSelectedJadwalProvider,
+                );
+                return Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildInputSection(
+                        title: 'Kehadiran',
+                        children: [
+                          _buildNumberField(
+                            controller: _jumlahHadirController,
+                            label: 'Jumlah Hadir',
+                            max: selectedJadwal?['kelas']?['jumlah_murid'],
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
+
+                      const SizedBox(height: 20),
+
+                      _buildInputSection(
+                        title: 'Izin',
+                        children: [
+                          _buildNumberField(
+                            controller: _jumlahIzinController,
+                            label: 'Jumlah Izin',
+                            max: selectedJadwal?['kelas']?['jumlah_murid'],
+                          ),
+                          const SizedBox(height: 12),
+                          _buildNameField(
+                            controller: _namaIzinController,
+                            label: 'Nama Siswa Izin',
+                            hint: 'Pisahkan dengan koma',
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      _buildInputSection(
+                        title: 'Alpa',
+                        children: [
+                          _buildNumberField(
+                            controller: _jumlahAlpaController,
+                            label: 'Jumlah Alpa',
+                            max: selectedJadwal?['kelas']?['jumlah_murid'],
+                          ),
+                          const SizedBox(height: 12),
+                          _buildNameField(
+                            controller: _namaAlpaController,
+                            label: 'Nama Siswa Alpa',
+                            hint: 'Pisahkan dengan koma',
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed:
+                              _isLoading
+                                  ? null
+                                  : () => _submitAbsensi(selectedJadwal),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child:
+                              _isLoading
+                                  ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 3,
+                                    ),
+                                  )
+                                  : const Text(
+                                    'SIMPAN ABSENSI',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(String message, Color bgColor, Color textColor) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildDateCard(DateTime date) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100], // Soft gray card background
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.calendar_today, size: 20, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInputSection({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[100], // Soft gray card background
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(children: children),
+        ),
+      ],
     );
   }
 
@@ -234,9 +336,22 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        floatingLabelBehavior: FloatingLabelBehavior.never,
+        filled: true,
+        fillColor: Colors.white, // White input background
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         suffixText: 'siswa',
+        suffixStyle: const TextStyle(color: Colors.grey, fontSize: 14),
       ),
+      style: const TextStyle(color: Colors.black87, fontSize: 14),
       keyboardType: TextInputType.number,
       validator: (value) {
         if (value == null || value.isEmpty) return 'Harus diisi';
@@ -253,17 +368,27 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     required String label,
     String? hint,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          hintText: hint,
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        floatingLabelBehavior: FloatingLabelBehavior.never,
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        filled: true,
+        fillColor: Colors.white, // White input background
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
         ),
-        maxLines: 2,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
+      style: const TextStyle(color: Colors.black87, fontSize: 14),
+      maxLines: 2,
     );
   }
 }

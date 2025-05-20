@@ -32,12 +32,20 @@ class _AbsenTabPageState extends ConsumerState<AbsenTabPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[200],
       appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 1,
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.blue,
+          labelColor: Colors.blue,
+          unselectedLabelColor: Colors.grey[600],
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
           tabs: const [
-            Tab(text: 'Absen', icon: Icon(Icons.fingerprint)),
-            Tab(text: 'Riwayat', icon: Icon(Icons.history)),
+            Tab(icon: Icon(Icons.fingerprint), text: 'Absen'),
+            Tab(icon: Icon(Icons.history_rounded), text: 'Riwayat'),
           ],
         ),
       ),
@@ -171,7 +179,6 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
       final guruId = profilResponse['id'];
       final absenService = ref.read(absenServiceProvider);
 
-      // Cek izin terlebih dahulu
       final hasIzin = await absenService.cekIzinDisetujui(
         guruId,
         _selectedJadwal!['id'],
@@ -198,7 +205,7 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
       setState(() {
         _successMessage =
             'Absensi berhasil: ${_formatStatus(result['status'])}';
-        _loadJadwalHariIni(); // Refresh data
+        _loadJadwalHariIni();
       });
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -240,59 +247,102 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_errorMessage.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _errorMessage,
-                style: const TextStyle(color: Colors.red),
-              ),
-            ),
+            _buildStatusCard(_errorMessage, Colors.red[50]!, Colors.red),
 
           if (_successMessage.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _successMessage,
-                style: const TextStyle(color: Colors.green),
-              ),
-            ),
+            _buildStatusCard(_successMessage, Colors.green[50]!, Colors.green),
 
-          if (_isLoading) const Center(child: CircularProgressIndicator()),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator(color: Colors.blue)),
 
-          if (!_isLoading && _jadwalHariIni.isEmpty)
-            Column(
-              children: [
-                const Text(
-                  'Tidak ada jadwal mengajar hari ini.',
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: _loadJadwalHariIni,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Muat Ulang'),
-                ),
-              ],
-            ),
+          if (!_isLoading && _jadwalHariIni.isEmpty) _buildEmptyScheduleUI(),
 
           if (_jadwalHariIni.isNotEmpty) ...[
-            const Text(
-              'Pilih Jadwal',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            _buildScheduleSelection(theme),
+            const SizedBox(height: 24),
+
+            if (_selectedJadwal != null) _buildScheduleDetailsCard(theme),
+
+            const SizedBox(height: 24),
+            _buildAbsenButton(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(String message, Color bgColor, Color textColor) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textColor.withAlpha(100)),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(color: textColor),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildEmptyScheduleUI() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.calendar_today, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Tidak ada jadwal mengajar hari ini',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<Map<String, dynamic>>(
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _loadJadwalHariIni,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Muat Ulang'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.grey[600],
+                side: BorderSide(color: Colors.grey[300]!),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleSelection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pilih Jadwal',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!),
+            color: Colors.white,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<Map<String, dynamic>>(
               value: _selectedJadwal,
+              isExpanded: true,
               items:
                   _jadwalHariIni.map((jadwal) {
                     final mapel = jadwal['mata_pelajaran']?['nama'] ?? '-';
@@ -301,89 +351,128 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
                     final selesai = _formatTime(jadwal['waktu_selesai'] ?? '');
                     return DropdownMenuItem(
                       value: jadwal,
-                      child: Text('$mapel - $kelas ($mulai - $selesai)'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          '$mapel - $kelas ($mulai - $selesai)',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.black87),
+                        ),
+                      ),
                     );
                   }).toList(),
               onChanged: (value) => setState(() => _selectedJadwal = value),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              dropdownColor: Colors.white,
+              icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
             ),
-            const SizedBox(height: 20),
+          ),
+        ),
+      ],
+    );
+  }
 
-            if (_selectedJadwal != null)
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Detail Jadwal', style: theme.textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      _infoRow(
-                        'Mata Pelajaran',
-                        _selectedJadwal!['mata_pelajaran']?['nama'],
-                      ),
-                      _infoRow('Kelas', _selectedJadwal!['kelas']?['nama']),
-                      _infoRow(
-                        'Waktu',
-                        '${_formatTime(_selectedJadwal!['waktu_mulai'])} - ${_formatTime(_selectedJadwal!['waktu_selesai'])}',
-                      ),
-                      _infoRow(
-                        'Lokasi Absen',
-                        _selectedJadwal!['lokasi_absen']?['nama'],
-                      ),
-                      _infoRow(
-                        'Radius',
-                        '${_selectedJadwal!['lokasi_absen']?['radius'] ?? '-'} meter',
-                      ),
-                    ],
+  Widget _buildScheduleDetailsCard(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 20, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                  'Detail Jadwal',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-              ),
-            const SizedBox(height: 16),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _handleAbsen,
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Absen Sekarang'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  textStyle: const TextStyle(fontSize: 16),
-                ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              'Mata Pelajaran',
+              _selectedJadwal!['mata_pelajaran']?['nama'],
+            ),
+            _buildDetailRow('Kelas', _selectedJadwal!['kelas']?['nama']),
+            _buildDetailRow(
+              'Waktu',
+              '${_formatTime(_selectedJadwal!['waktu_mulai'])} - ${_formatTime(_selectedJadwal!['waktu_selesai'])}',
+            ),
+            _buildDetailRow(
+              'Lokasi Absen',
+              _selectedJadwal!['lokasi_absen']?['nama'],
+            ),
+            _buildDetailRow(
+              'Radius',
+              '${_selectedJadwal!['lokasi_absen']?['radius'] ?? '-'} meter',
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value?.toString() ?? '-',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _infoRow(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Flexible(
-            child: Text(
-              value?.toString() ?? '-',
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
+  Widget _buildAbsenButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _handleAbsen,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ],
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        child: const Text(
+          'ABSEN SEKARANG',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -474,74 +563,234 @@ class _RiwayatAbsenContentState extends ConsumerState<RiwayatAbsenContent> {
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _errorMessage.isNotEmpty
-        ? Center(child: Text(_errorMessage))
-        : _riwayatAbsen.isEmpty
-        ? const Center(child: Text('Tidak ada riwayat absensi'))
-        : RefreshIndicator(
-          onRefresh: _loadRiwayatAbsen,
-          child: ListView.builder(
-            itemCount: _riwayatAbsen.length,
-            itemBuilder: (context, index) {
-              final absen = _riwayatAbsen[index];
-              final jadwal = absen['jadwal'] ?? {};
-              final mataPelajaran = jadwal['mata_pelajaran']?['nama'] ?? '-';
-              final kelas = jadwal['kelas']?['nama'] ?? '-';
-              final tanggal = DateFormat(
-                'dd MMM yyyy',
-              ).format(DateTime.parse(absen['tanggal']));
-              final waktu = absen['waktu_absen'] ?? '';
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Colors.blue));
+    }
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(mataPelajaran),
-                  subtitle: Text('$kelas • $tanggal'),
-                  trailing: Chip(
-                    label: Text(
-                      _formatStatus(absen['status']),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    backgroundColor: _getStatusColor(absen['status']),
-                  ),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder:
-                          (context) => AlertDialog(
-                            title: Text(mataPelajaran),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Kelas: $kelas'),
-                                Text('Tanggal: $tanggal'),
-                                Text('Waktu Absen: $waktu'),
-                                Text(
-                                  'Status: ${_formatStatus(absen['status'])}',
-                                ),
-                                if (absen['latitude'] != null &&
-                                    absen['longitude'] != null)
-                                  Text(
-                                    'Lokasi: ${absen['latitude']}, ${absen['longitude']}',
-                                  ),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('TUTUP'),
-                              ),
-                            ],
-                          ),
-                    );
-                  },
-                ),
-              );
-            },
+    if (_errorMessage.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            _errorMessage,
+            style: TextStyle(color: Colors.red[600]),
+            textAlign: TextAlign.center,
           ),
-        );
+        ),
+      );
+    }
+
+    if (_riwayatAbsen.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Belum ada riwayat absensi',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _loadRiwayatAbsen,
+              style: TextButton.styleFrom(foregroundColor: Colors.blue),
+              child: const Text('Muat Ulang'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadRiwayatAbsen,
+      color: Colors.blue,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: _riwayatAbsen.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final absen = _riwayatAbsen[index];
+          final jadwal = absen['jadwal'] ?? {};
+          final mataPelajaran = jadwal['mata_pelajaran']?['nama'] ?? '-';
+          final kelas = jadwal['kelas']?['nama'] ?? '-';
+          final tanggal = DateFormat(
+            'dd MMM yyyy',
+          ).format(DateTime.parse(absen['tanggal']));
+          final waktu = absen['waktu_absen'] ?? '';
+          final status = _formatStatus(absen['status']);
+
+          return Card(
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey[200]!),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap:
+                  () => _showAbsenDetails(
+                    context,
+                    absen,
+                    mataPelajaran,
+                    kelas,
+                    tanggal,
+                    waktu,
+                    status,
+                  ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            mataPelajaran,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$kelas • $tanggal',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(absen['status']).withAlpha(100),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _getStatusColor(
+                            absen['status'],
+                          ).withAlpha(100),
+                        ),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: _getStatusColor(absen['status']),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAbsenDetails(
+    BuildContext context,
+    Map<String, dynamic> absen,
+    String mataPelajaran,
+    String kelas,
+    String tanggal,
+    String waktu,
+    String status,
+  ) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            backgroundColor: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Detail Absensi',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailItem('Mata Pelajaran', mataPelajaran),
+                  _buildDetailItem('Kelas', kelas),
+                  _buildDetailItem('Tanggal', tanggal),
+                  _buildDetailItem('Waktu Absen', waktu),
+                  _buildDetailItem(
+                    'Status',
+                    status,
+                    valueColor: _getStatusColor(absen['status']),
+                  ),
+                  if (absen['latitude'] != null && absen['longitude'] != null)
+                    _buildDetailItem(
+                      'Lokasi',
+                      '${absen['latitude']}, ${absen['longitude']}',
+                    ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        backgroundColor: Colors.grey[100],
+                        foregroundColor: Colors.blue,
+                      ),
+                      child: const Text('Tutup'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: valueColor ?? Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

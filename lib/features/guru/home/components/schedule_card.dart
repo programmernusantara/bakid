@@ -14,27 +14,20 @@ class ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final times = time.split('-');
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: Colors.grey[300]!),
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.blueAccent.withAlpha(100),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.school_outlined,
-              color: Colors.blueAccent.withAlpha(100),
-            ),
+          CircleAvatar(
+            backgroundColor: Colors.indigo.withAlpha(100),
+            child: Icon(Icons.schedule, color: Colors.indigo),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -44,15 +37,12 @@ class ScheduleCard extends StatelessWidget {
                 Text(
                   subject,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  kelas,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
+                Text(kelas, style: TextStyle(color: Colors.grey[600])),
               ],
             ),
           ),
@@ -60,15 +50,15 @@ class ScheduleCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                time.split('-')[0].trim(),
+                times[0].trim(),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent.withAlpha(100),
+                  color: Colors.indigo,
                 ),
               ),
               Text(
-                time.split('-')[1].trim(),
-                style: TextStyle(color: Colors.grey[600]),
+                times[1].trim(),
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
               ),
             ],
           ),
