@@ -4,6 +4,7 @@ import 'package:bakid/features/guru/jadwal/jadwal_providers.dart';
 import 'package:bakid/features/guru/pengumuman/pengumuman_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart'; // Added for modern icons
 
 import 'components/profile_header.dart';
 import 'components/section_header.dart';
@@ -23,6 +24,29 @@ class HomePage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
+
+      appBar: AppBar(
+        title: Text(
+          'Home',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.grey[200],
+        actions: [
+          IconButton(
+            icon: Badge(
+              // You can add notification count here if needed
+              // label: Text('3'),
+              child: const Icon(Iconsax.notification),
+            ),
+            onPressed: () {
+              // Navigate to notification page
+              Navigator.pushNamed(context, '/notifications');
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -34,7 +58,7 @@ class HomePage extends ConsumerWidget {
 
               const SectionHeader(
                 title: 'Jadwal Hari Ini',
-                icon: Icons.calendar_today_outlined,
+                icon: Iconsax.calendar, // Updated icon
               ),
               const SizedBox(height: 12),
               _ScheduleSection(jadwalAsync: jadwalAsync),
@@ -42,7 +66,7 @@ class HomePage extends ConsumerWidget {
 
               const SectionHeader(
                 title: 'Pengumuman Terkini',
-                icon: Icons.announcement_outlined,
+                icon: Iconsax.notification_bing, // Updated icon
               ),
               const SizedBox(height: 12),
               _AnnouncementSection(pengumumanAsync: pengumumanAsync),
@@ -65,7 +89,7 @@ class _ScheduleSection extends ConsumerWidget {
       data: (jadwalList) {
         if (jadwalList.isEmpty) {
           return const EmptyStateCard(
-            icon: Icons.calendar_today_outlined,
+            icon: Iconsax.calendar_remove, // Updated icon
             message: 'Tidak ada jadwal mengajar hari ini',
           );
         }
@@ -101,7 +125,7 @@ class _AnnouncementSection extends ConsumerWidget {
       data: (pengumumanList) {
         if (pengumumanList.isEmpty) {
           return const EmptyStateCard(
-            icon: Icons.announcement_outlined,
+            icon: Iconsax.note_remove, // Updated icon
             message: 'Tidak ada pengumuman saat ini',
           );
         }

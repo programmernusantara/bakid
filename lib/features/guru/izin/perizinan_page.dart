@@ -29,6 +29,7 @@ class _PerizinanPageState extends State<PerizinanPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: const Text('Perizinan Guru'),
         bottom: TabBar(
           controller: _tabController,

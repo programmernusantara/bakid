@@ -34,6 +34,7 @@ class _AbsenTabPageState extends ConsumerState<AbsenTabPage>
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
+        title: const Text("Absensi"),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 1,
@@ -42,10 +43,9 @@ class _AbsenTabPageState extends ConsumerState<AbsenTabPage>
           indicatorColor: Colors.blue,
           labelColor: Colors.blue,
           unselectedLabelColor: Colors.grey[600],
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
           tabs: const [
-            Tab(icon: Icon(Icons.fingerprint), text: 'Absen'),
-            Tab(icon: Icon(Icons.history_rounded), text: 'Riwayat'),
+            Tab(icon: Icon(Icons.fingerprint)),
+            Tab(icon: Icon(Icons.history_rounded)),
           ],
         ),
       ),

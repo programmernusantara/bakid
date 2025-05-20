@@ -29,9 +29,13 @@ class _AbsensiSiswaPageState extends State<AbsensiSiswaPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: const Text('Absensi Siswa'),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.blue,
+          labelColor: Colors.blue,
+          unselectedLabelColor: Colors.grey[600],
           tabs: const [
             Tab(icon: Icon(Icons.edit)),
             Tab(icon: Icon(Icons.history)),

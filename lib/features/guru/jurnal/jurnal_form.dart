@@ -1,6 +1,8 @@
+// jurnal_form.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:bakid/core/services/auth_service.dart';
 import 'package:bakid/features/auth/auth_providers.dart';
 import 'package:bakid/features/guru/jurnal/jurnal_providers.dart';
@@ -45,7 +47,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
   }
 
   Future<void> _checkExistingJurnal() async {
-    if (_selectedJadwal == null) return;
+    if (_selectedJadwal == null || !mounted) return;
 
     final user = ref.read(currentUserProvider);
     final guruId = user?['profil']?['id'];
@@ -59,6 +61,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
       }).future,
     );
 
+    if (!mounted) return;
     setState(() {
       _isJurnalExist =
           existingJurnal != null &&
@@ -70,21 +73,19 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedJadwal == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih jadwal mengajar terlebih dahulu')),
-      );
+      _showNotification('Pilih jadwal mengajar terlebih dahulu', isError: true);
       return;
     }
 
     if (_isJurnalExist) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sudah ada jurnal untuk jadwal ini hari ini'),
-        ),
+      _showNotification(
+        'Sudah ada jurnal untuk jadwal ini hari ini',
+        isError: true,
       );
       return;
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     final user = ref.read(currentUserProvider);
@@ -102,6 +103,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
           'kendala': _kendalaController.text,
           'solusi': _solusiController.text,
         });
+        if (mounted) _showNotification('Jurnal berhasil dibuat');
       } else {
         await supabase
             .from('jurnal_mengajar')
@@ -112,17 +114,17 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
               'diperbarui_pada': DateTime.now().toIso8601String(),
             })
             .eq('id', widget.jurnalToEdit!['id']);
+        if (mounted) _showNotification('Jurnal berhasil diperbarui');
       }
 
-      if (mounted) {
-        Navigator.pop(context);
-        ref.invalidate(jurnalProvider(guruId));
-      }
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ref.invalidate(jurnalProvider(guruId));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan: ${e.toString()}')),
-        );
+        _showNotification('Gagal menyimpan: ${e.toString()}', isError: true);
       }
     } finally {
       if (mounted) {
@@ -131,35 +133,63 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     }
   }
 
+  void _showNotification(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.hideCurrentSnackBar();
+    scaffold.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red[600] : Colors.green[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final user = ref.watch(currentUserProvider);
     final guruId = user?['profil']?['id'] as String?;
     final today = DateTime.now();
     final currentDay = today.weekday;
 
     if (guruId == null) {
-      return const Scaffold(
-        body: Center(child: Text('Guru ID tidak ditemukan')),
+      return Scaffold(
+        body: Center(
+          child: Text(
+            'Guru ID tidak ditemukan',
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
       );
     }
 
     final jadwalAsync = ref.watch(jadwalGuruProvider(guruId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.jurnalToEdit == null ? 'Buat Jurnal Baru' : 'Edit Jurnal',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        elevation: 0,
-      ),
+      backgroundColor: theme.colorScheme.surface,
       body: Form(
         key: _formKey,
         child: jadwalAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(child: Text('Error: $error')),
+          loading:
+              () => Center(
+                child: CircularProgressIndicator(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+          error:
+              (error, stack) => Center(
+                child: Text(
+                  'Error: $error',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
           data: (jadwalList) {
             final jadwalHariIni =
                 jadwalList
@@ -173,223 +203,209 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.schedule, size: 48),
+                    Icon(
+                      Iconsax.calendar_remove,
+                      size: 48,
+                      color: theme.colorScheme.onSurface.withAlpha(100),
+                    ),
                     const SizedBox(height: 16),
-                    const Text('Tidak ada jadwal mengajar hari ini'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Kembali'),
+                    Text(
+                      'Tidak ada jadwal mengajar hari ini',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withAlpha(100),
+                      ),
                     ),
                   ],
                 ),
               );
             }
 
-            // Pastikan _selectedJadwal valid
             if (_selectedJadwal == null ||
                 !jadwalHariIni.any((j) => j['id'] == _selectedJadwal!['id'])) {
               _selectedJadwal = jadwalHariIni.first;
             }
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _checkExistingJurnal();
+              if (mounted) {
+                _checkExistingJurnal();
+              }
             });
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Informasi Tanggal
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
+                  // Date Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withAlpha(100),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_today, color: Colors.blue),
-                          const SizedBox(width: 12),
-                          Text(
-                            DateFormat('EEEE, d MMMM y', 'id').format(today),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Iconsax.calendar_1,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          DateFormat('EEEE, d MMMM y', 'id').format(today),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w500,
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Pilih Jadwal
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Jadwal Mengajar',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<Map<String, dynamic>>(
-                            value: _selectedJadwal,
-                            decoration: InputDecoration(
-                              labelText: 'Pilih Jadwal',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
-                            items:
-                                jadwalHariIni.map((jadwal) {
-                                  final mp = jadwal['mata_pelajaran'] ?? {};
-                                  final kelas = jadwal['kelas'] ?? {};
-                                  return DropdownMenuItem<Map<String, dynamic>>(
-                                    value: jadwal,
-                                    key: ValueKey(jadwal['id']),
-                                    child: Text(
-                                      '${mp['nama']} - ${kelas['nama']} (${jadwal['waktu_mulai']}-${jadwal['waktu_selesai']})',
-                                    ),
-                                  );
-                                }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  _selectedJadwal = value;
-                                  _checkExistingJurnal();
-                                });
-                              }
-                            },
-                            validator: (value) {
-                              if (value == null) {
-                                return 'Pilih jadwal terlebih dahulu';
-                              }
-                              return null;
-                            },
-                          ),
-                          if (_isJurnalExist)
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.orange[50],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.warning,
-                                    color: Colors.orange[800],
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Sudah ada jurnal untuk jadwal ini hari ini',
-                                    style: TextStyle(color: Colors.orange[800]),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Form Input
-                  _buildSection(
-                    title: 'Materi yang Diajarkan',
-                    icon: Icons.book,
-                    child: TextFormField(
-                      controller: _materiController,
-                      decoration: const InputDecoration(
-                        hintText: 'Masukkan materi yang diajarkan',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Materi tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildSection(
-                    title: 'Kendala',
-                    icon: Icons.warning_amber,
-                    child: TextFormField(
-                      controller: _kendalaController,
-                      decoration: const InputDecoration(
-                        hintText: 'Masukkan kendala yang dihadapi (opsional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildSection(
-                    title: 'Solusi',
-                    icon: Icons.lightbulb,
-                    child: TextFormField(
-                      controller: _solusiController,
-                      decoration: const InputDecoration(
-                        hintText: 'Masukkan solusi yang dilakukan (opsional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 2,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Tombol Simpan
+                  // Schedule Selection
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Jadwal Mengajar',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<Map<String, dynamic>>(
+                        value: _selectedJadwal,
+                        decoration: InputDecoration(
+                          labelText: 'Pilih Jadwal',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.outline.withAlpha(100),
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surfaceContainerHighest,
+                        ),
+                        items:
+                            jadwalHariIni.map((jadwal) {
+                              final mp = jadwal['mata_pelajaran'] ?? {};
+                              final kelas = jadwal['kelas'] ?? {};
+                              return DropdownMenuItem<Map<String, dynamic>>(
+                                value: jadwal,
+                                key: ValueKey(jadwal['id']),
+                                child: Text(
+                                  '${mp['nama']} - ${kelas['nama']} (${jadwal['waktu_mulai']}-${jadwal['waktu_selesai']}',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              );
+                            }).toList(),
+                        onChanged: (value) {
+                          if (value != null && mounted) {
+                            setState(() {
+                              _selectedJadwal = value;
+                              _checkExistingJurnal();
+                            });
+                          }
+                        },
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Pilih jadwal terlebih dahulu';
+                          }
+                          return null;
+                        },
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      if (_isJurnalExist)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Iconsax.info_circle,
+                                size: 18,
+                                color: theme.colorScheme.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Sudah ada jurnal untuk jadwal ini',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Form Inputs
+                  _buildInputSection(
+                    icon: Iconsax.document_text,
+                    title: 'Materi yang Diajarkan',
+                    hint: 'Masukkan materi yang diajarkan',
+                    controller: _materiController,
+                    maxLines: 4,
+                    isRequired: true,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 20),
+
+                  _buildInputSection(
+                    icon: Iconsax.warning_2,
+                    title: 'Kendala',
+                    hint: 'Masukkan kendala yang dihadapi (opsional)',
+                    controller: _kendalaController,
+                    maxLines: 3,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 20),
+
+                  _buildInputSection(
+                    icon: Iconsax.lamp_charge,
+                    title: 'Solusi',
+                    hint: 'Masukkan solusi yang dilakukan (opsional)',
+                    controller: _solusiController,
+                    maxLines: 3,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Submit Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        elevation: 0,
                       ),
                       onPressed: _isLoading ? null : _submit,
                       child:
                           _isLoading
-                              ? const CircularProgressIndicator(
-                                color: Colors.white,
+                              ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: theme.colorScheme.onPrimary,
+                                ),
                               )
-                              : const Text(
+                              : Text(
                                 'SIMPAN JURNAL',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                     ),
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             );
@@ -399,26 +415,57 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     );
   }
 
-  Widget _buildSection({
-    required String title,
+  Widget _buildInputSection({
     required IconData icon,
-    required Widget child,
+    required String title,
+    required String hint,
+    required TextEditingController controller,
+    required int maxLines,
+    required ThemeData theme,
+    bool isRequired = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, size: 20, color: Colors.blue),
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
             const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        child,
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hint,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: theme.colorScheme.outline.withAlpha(100),
+              ),
+            ),
+            contentPadding: const EdgeInsets.all(16),
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainerHighest,
+          ),
+          maxLines: maxLines,
+          validator:
+              isRequired
+                  ? (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Field ini wajib diisi';
+                    }
+                    return null;
+                  }
+                  : null,
+          style: theme.textTheme.bodyMedium,
+        ),
       ],
     );
   }

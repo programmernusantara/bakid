@@ -41,6 +41,7 @@ dependencies:
   image_picker: ^1.1.2
   geolocator: ^14.0.0
   animations: ^2.0.11
+  iconsax: ^0.0.8
 
 dev_dependencies:
   flutter_test:

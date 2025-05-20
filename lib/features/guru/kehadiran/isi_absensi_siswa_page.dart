@@ -41,11 +41,11 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
         (int.tryParse(_jumlahAlpaController.text) ?? 0);
 
     if (jumlahSiswa > 0 && totalAbsen != jumlahSiswa) {
-      setState(
-        () =>
-            _errorMessage =
-                'Total absen ($totalAbsen) harus sama dengan jumlah siswa ($jumlahSiswa)',
-      );
+      setState(() {
+        _errorMessage =
+            'Total absen ($totalAbsen) harus sama dengan jumlah siswa ($jumlahSiswa)';
+        _successMessage = '';
+      });
       return;
     }
 
@@ -83,13 +83,15 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
         'nama_alpa': _namaAlpaController.text.trim(),
       });
 
-      setState(() => _successMessage = 'Absensi berhasil disimpan');
-      _formKey.currentState?.reset();
-      _jumlahHadirController.clear();
-      _jumlahIzinController.clear();
-      _namaIzinController.clear();
-      _jumlahAlpaController.clear();
-      _namaAlpaController.clear();
+      setState(() {
+        _successMessage = 'Absensi berhasil disimpan';
+        _formKey.currentState?.reset();
+        _jumlahHadirController.clear();
+        _jumlahIzinController.clear();
+        _namaIzinController.clear();
+        _jumlahAlpaController.clear();
+        _namaAlpaController.clear();
+      });
     } catch (e) {
       setState(() => _errorMessage = 'Error: ${e.toString()}');
     } finally {
@@ -110,143 +112,198 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
   @override
   Widget build(BuildContext context) {
     final currentDate = DateTime.now();
+    Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[200], // Soft gray background
+      backgroundColor: Colors.grey[200],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date Header
+              _buildDateHeader(currentDate),
+              const SizedBox(height: 24),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          children: [
-            // Status messages
-            if (_errorMessage.isNotEmpty)
-              _buildStatusCard(
-                _errorMessage,
-                Colors.red[50]!,
-                Colors.red[700]!,
-              ),
+              // Status messages
+              if (_errorMessage.isNotEmpty)
+                _buildStatusCard(
+                  _errorMessage,
+                  Colors.red[50]!,
+                  Colors.red[700]!,
+                ),
 
-            if (_successMessage.isNotEmpty)
-              _buildStatusCard(
-                _successMessage,
-                Colors.green[50]!,
-                Colors.green[700]!,
-              ),
+              if (_successMessage.isNotEmpty)
+                _buildStatusCard(
+                  _successMessage,
+                  Colors.green[50]!,
+                  Colors.green[700]!,
+                ),
 
-            // Date Card
-            _buildDateCard(currentDate),
+              const SizedBox(height: 8),
+              const JadwalAbsensiDropdown(),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 20),
-
-            // Jadwal Dropdown
-            const JadwalAbsensiDropdown(),
-
-            const SizedBox(height: 24),
-
-            // Form Absensi
-            Consumer(
-              builder: (context, ref, _) {
-                final selectedJadwal = ref.watch(
-                  absensiSiswaSelectedJadwalProvider,
-                );
-                return Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      _buildInputSection(
-                        title: 'Kehadiran',
-                        children: [
-                          _buildNumberField(
-                            controller: _jumlahHadirController,
-                            label: 'Jumlah Hadir',
-                            max: selectedJadwal?['kelas']?['jumlah_murid'],
+              // Form Section
+              Consumer(
+                builder: (context, ref, _) {
+                  final selectedJadwal = ref.watch(
+                    absensiSiswaSelectedJadwalProvider,
+                  );
+                  return Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section Header
+                        const Text(
+                          'Data Absensi',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
                           ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      _buildInputSection(
-                        title: 'Izin',
-                        children: [
-                          _buildNumberField(
-                            controller: _jumlahIzinController,
-                            label: 'Jumlah Izin',
-                            max: selectedJadwal?['kelas']?['jumlah_murid'],
-                          ),
-                          const SizedBox(height: 12),
-                          _buildNameField(
-                            controller: _namaIzinController,
-                            label: 'Nama Siswa Izin',
-                            hint: 'Pisahkan dengan koma',
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      _buildInputSection(
-                        title: 'Alpa',
-                        children: [
-                          _buildNumberField(
-                            controller: _jumlahAlpaController,
-                            label: 'Jumlah Alpa',
-                            max: selectedJadwal?['kelas']?['jumlah_murid'],
-                          ),
-                          const SizedBox(height: 12),
-                          _buildNameField(
-                            controller: _namaAlpaController,
-                            label: 'Nama Siswa Alpa',
-                            hint: 'Pisahkan dengan koma',
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed:
-                              _isLoading
-                                  ? null
-                                  : () => _submitAbsensi(selectedJadwal),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child:
-                              _isLoading
-                                  ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 3,
-                                    ),
-                                  )
-                                  : const Text(
-                                    'SIMPAN ABSENSI',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+                        const SizedBox(height: 16),
+
+                        // Hadir Section
+                        _buildInputCard(
+                          title: 'Hadir',
+                          icon: Icons.check_circle_outline,
+                          iconColor: Colors.green,
+                          children: [
+                            _buildModernNumberField(
+                              controller: _jumlahHadirController,
+                              label: 'Jumlah Siswa Hadir',
+                              max: selectedJadwal?['kelas']?['jumlah_murid'],
+                              icon: Icons.people_alt_outlined,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Izin Section
+                        _buildInputCard(
+                          title: 'Izin',
+                          icon: Icons.help_outline,
+                          iconColor: Colors.blue,
+                          children: [
+                            _buildModernNumberField(
+                              controller: _jumlahIzinController,
+                              label: 'Jumlah Siswa Izin',
+                              max: selectedJadwal?['kelas']?['jumlah_murid'],
+                              icon: Icons.people_alt_outlined,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildModernTextField(
+                              controller: _namaIzinController,
+                              label: 'Nama Siswa Izin',
+                              hint: 'Pisahkan dengan koma',
+                              icon: Icons.list_alt_outlined,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Alpa Section
+                        _buildInputCard(
+                          title: 'Alpa',
+                          icon: Icons.highlight_off_outlined,
+                          iconColor: Colors.red,
+                          children: [
+                            _buildModernNumberField(
+                              controller: _jumlahAlpaController,
+                              label: 'Jumlah Siswa Alpa',
+                              max: selectedJadwal?['kelas']?['jumlah_murid'],
+                              icon: Icons.people_alt_outlined,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildModernTextField(
+                              controller: _namaAlpaController,
+                              label: 'Nama Siswa Alpa',
+                              hint: 'Pisahkan dengan koma',
+                              icon: Icons.list_alt_outlined,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Submit Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed:
+                                _isLoading
+                                    ? null
+                                    : () => _submitAbsensi(selectedJadwal),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child:
+                                _isLoading
+                                    ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 3,
+                                      ),
+                                    )
+                                    : const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.save_alt_outlined, size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'SIMPAN ABSENSI',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDateHeader(DateTime date) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Hari Ini',
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -254,41 +311,29 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        message,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildDateCard(DateTime date) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.grey[100], // Soft gray card background
-        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textColor.withAlpha(100)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.calendar_today, size: 20, color: Colors.blue),
+          Icon(
+            textColor == Colors.red[700]
+                ? Icons.error_outline
+                : Icons.check_circle_outline,
+            color: textColor,
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
-              style: const TextStyle(
-                fontSize: 15,
+              message,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
               ),
             ),
           ),
@@ -297,29 +342,44 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     );
   }
 
-  Widget _buildInputSection({
+  Widget _buildInputCard({
     required String title,
     required List<Widget> children,
+    required IconData icon,
+    required Color iconColor,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: iconColor),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
           ),
         ),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey[100], // Soft gray card background
+            color: Colors.white,
             borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(20),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(children: children),
         ),
@@ -327,19 +387,20 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     );
   }
 
-  Widget _buildNumberField({
+  Widget _buildModernNumberField({
     required TextEditingController controller,
     required String label,
     int? max,
+    required IconData icon,
   }) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
         floatingLabelBehavior: FloatingLabelBehavior.never,
         filled: true,
-        fillColor: Colors.white, // White input background
+        fillColor: Colors.grey[50],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
@@ -348,8 +409,9 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
           horizontal: 16,
           vertical: 14,
         ),
+        prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
         suffixText: 'siswa',
-        suffixStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
       ),
       style: const TextStyle(color: Colors.black87, fontSize: 14),
       keyboardType: TextInputType.number,
@@ -363,21 +425,22 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     );
   }
 
-  Widget _buildNameField({
+  Widget _buildModernTextField({
     required TextEditingController controller,
     required String label,
     String? hint,
+    required IconData icon,
   }) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
         floatingLabelBehavior: FloatingLabelBehavior.never,
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
         filled: true,
-        fillColor: Colors.white, // White input background
+        fillColor: Colors.grey[50],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
@@ -386,6 +449,7 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
           horizontal: 16,
           vertical: 14,
         ),
+        prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
       ),
       style: const TextStyle(color: Colors.black87, fontSize: 14),
       maxLines: 2,

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:iconsax/iconsax.dart';
 
 class JurnalCard extends StatelessWidget {
   final Map<String, dynamic> jurnal;
-  final VoidCallback? onEdit;
 
-  const JurnalCard({super.key, required this.jurnal, this.onEdit});
+  const JurnalCard({super.key, required this.jurnal});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final jadwal = jurnal['jadwal_mengajar'] as Map<String, dynamic>?;
     final mataPelajaran = jadwal?['mata_pelajaran'] as Map<String, dynamic>?;
     final kelas = jadwal?['kelas'] as Map<String, dynamic>?;
@@ -24,96 +25,113 @@ class JurnalCard extends StatelessWidget {
     ];
     final hariIndex = jadwal?['hari_dalam_minggu'] as int?;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(100),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header dengan mata pelajaran dan kelas
+            // Header with subject and class
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(100),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Iconsax.book_1,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         mataPelajaran?['nama'] ?? 'Mata Pelajaran',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Colors.blue,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         kelas?['nama'] ?? 'Kelas',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(100),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                if (onEdit != null)
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: onEdit,
-                  ),
-              ],
-            ),
-
-            const Divider(height: 24, thickness: 1),
-
-            // Informasi waktu
-            Row(
-              children: [
-                _buildInfoIconText(
-                  icon: Icons.calendar_today,
-                  text:
-                      tanggal != null
-                          ? DateFormat(
-                            'EEEE, d MMMM y',
-                            'id_ID',
-                          ).format(tanggal)
-                          : 'Tanggal tidak tersedia',
-                ),
-                const SizedBox(width: 16),
-                _buildInfoIconText(
-                  icon: Icons.schedule,
-                  text:
-                      hariIndex != null && jadwal?['waktu_mulai'] != null
-                          ? '${hari[hariIndex - 1]}, ${jadwal!['waktu_mulai']}-${jadwal['waktu_selesai']}'
-                          : 'Waktu tidak tersedia',
                 ),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // Konten jurnal
-            _buildJournalSection(
-              title: 'Materi yang Diajarkan',
+            // Date and time row
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                _buildInfoItem(
+                  icon: Iconsax.calendar,
+                  text:
+                      tanggal != null
+                          ? DateFormat('d MMM y', 'id_ID').format(tanggal)
+                          : 'Tanggal tidak tersedia',
+                  theme: theme,
+                ),
+                if (hariIndex != null && jadwal?['waktu_mulai'] != null)
+                  _buildInfoItem(
+                    icon: Iconsax.clock,
+                    text:
+                        '${hari[hariIndex - 1]}, ${jadwal!['waktu_mulai']}-${jadwal['waktu_selesai']}',
+                    theme: theme,
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Content sections
+            _buildContentSection(
+              icon: Iconsax.document_text_1,
+              title: 'Materi',
               content: jurnal['materi_yang_dipelajari'] ?? '-',
-              icon: Icons.book,
+              theme: theme,
             ),
 
             if (jurnal['kendala'] != null &&
                 jurnal['kendala'].toString().isNotEmpty)
-              _buildJournalSection(
+              _buildContentSection(
+                icon: Iconsax.warning_2,
                 title: 'Kendala',
                 content: jurnal['kendala'],
-                icon: Icons.warning_amber,
+                theme: theme,
               ),
 
             if (jurnal['solusi'] != null &&
                 jurnal['solusi'].toString().isNotEmpty)
-              _buildJournalSection(
+              _buildContentSection(
+                icon: Iconsax.lamp_charge,
                 title: 'Solusi',
                 content: jurnal['solusi'],
-                icon: Icons.lightbulb,
+                theme: theme,
               ),
           ],
         ),
@@ -121,21 +139,31 @@ class JurnalCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoIconText({required IconData icon, required String text}) {
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String text,
+    required ThemeData theme,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 8),
-        Text(text, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+        Icon(icon, size: 16, color: theme.colorScheme.onSurface.withAlpha(100)),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withAlpha(100),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildJournalSection({
+  Widget _buildContentSection({
+    required IconData icon,
     required String title,
     required String content,
-    required IconData icon,
+    required ThemeData theme,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -144,13 +172,12 @@ class JurnalCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: Colors.blue),
+              Icon(icon, size: 18, color: theme.colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -159,10 +186,16 @@ class JurnalCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(8),
+              color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(content, style: const TextStyle(fontSize: 14)),
+            child: Text(
+              content,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                height: 1.5,
+                color: theme.colorScheme.onSurface.withAlpha(100),
+              ),
+            ),
           ),
         ],
       ),
