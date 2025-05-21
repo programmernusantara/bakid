@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:bakid/core/services/auth_service.dart';
-import 'package:bakid/features/auth/auth_checker.dart';
-import 'package:bakid/features/auth/auth_providers.dart';
-import 'package:bakid/features/auth/splash_screen.dart';
+import 'package:bakid/fitur/auth/auth_checker.dart';
+import 'package:bakid/fitur/auth/auth_providers.dart';
+import 'package:bakid/fitur/auth/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
