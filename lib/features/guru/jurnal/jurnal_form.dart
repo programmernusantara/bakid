@@ -171,6 +171,17 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     final jadwalAsync = ref.watch(jadwalGuruProvider(guruId));
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.jurnalToEdit == null ? 'Buat Jurnal' : 'Edit Jurnal',
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed:
+              () =>
+                  Navigator.of(context).pop(), // Kembali ke halaman sebelumnya
+        ),
+      ),
       backgroundColor: theme.colorScheme.surface,
       body: Form(
         key: _formKey,

@@ -1,4 +1,3 @@
-// jurnal_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
@@ -7,31 +6,11 @@ import 'package:bakid/features/guru/jurnal/components/jurnal_card.dart';
 import 'package:bakid/features/guru/jurnal/jurnal_form.dart';
 import 'package:bakid/features/guru/jurnal/jurnal_providers.dart';
 
-class JurnalPage extends ConsumerStatefulWidget {
+class JurnalPage extends ConsumerWidget {
   const JurnalPage({super.key});
 
   @override
-  ConsumerState<JurnalPage> createState() => _JurnalPageState();
-}
-
-class _JurnalPageState extends ConsumerState<JurnalPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final user = ref.watch(currentUserProvider);
     final guruId = user?['profil']?['id'] as String?;
@@ -51,46 +30,35 @@ class _JurnalPageState extends ConsumerState<JurnalPage>
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: Text(
-          'Jurnal Mengajar',
+          'Riwayat Jurnal',
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
         centerTitle: true,
-        elevation: 0,
         backgroundColor: theme.colorScheme.surface,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: theme.colorScheme.primary,
-          labelColor: theme.colorScheme.primary,
-          unselectedLabelColor: theme.colorScheme.onSurface.withAlpha(100),
-          labelStyle: theme.textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w500,
+        actions: [
+          IconButton(
+            icon: const Icon(Iconsax.add),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const JurnalForm()),
+              );
+            },
           ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          tabs: const [
-            Tab(icon: Icon(Icons.fingerprint)),
-            Tab(icon: Icon(Icons.history_rounded)),
-          ],
-        ),
+        ],
       ),
-      floatingActionButton:
-          _tabController.index == 1
-              ? FloatingActionButton(
-                onPressed: () => _tabController.animateTo(0),
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                child: const Icon(Iconsax.add),
-              )
-              : null,
-      body: TabBarView(
-        controller: _tabController,
-        children: [const JurnalForm(), _buildJurnalHistoryTab(guruId, theme)],
-      ),
+      body: _buildJurnalHistoryTab(context, ref, guruId, theme),
     );
   }
 
-  Widget _buildJurnalHistoryTab(String guruId, ThemeData theme) {
+  Widget _buildJurnalHistoryTab(
+    BuildContext context,
+    WidgetRef ref,
+    String guruId,
+    ThemeData theme,
+  ) {
     final jurnalAsync = ref.watch(jurnalProvider(guruId));
 
     return RefreshIndicator(
@@ -148,7 +116,7 @@ class _JurnalPageState extends ConsumerState<JurnalPage>
           ),
           const SizedBox(height: 8),
           Text(
-            'Buat jurnal baru di tab "Buat Jurnal"',
+            'Klik tombol + untuk menambahkan jurnal baru',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withAlpha(100),
             ),

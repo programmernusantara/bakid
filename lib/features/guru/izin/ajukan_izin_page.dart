@@ -154,81 +154,91 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Pilih Tanggal Izin
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: Text(
-                _tanggalIzin == null
-                    ? 'Pilih Tanggal Izin'
-                    : '${DateFormat('dd MMM yyyy').format(_tanggalIzin!.start)} '
-                        '- ${DateFormat('dd MMM yyyy').format(_tanggalIzin!.end)}',
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Ajukan Izin'),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Pilih Tanggal Izin
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: Text(
+                  _tanggalIzin == null
+                      ? 'Pilih Tanggal Izin'
+                      : '${DateFormat('dd MMM yyyy').format(_tanggalIzin!.start)} '
+                          '- ${DateFormat('dd MMM yyyy').format(_tanggalIzin!.end)}',
+                ),
+                onTap: () => _selectDateRange(context),
               ),
-              onTap: () => _selectDateRange(context),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Jenis Izin
-            DropdownButtonFormField<String>(
-              value: _jenisIzin,
-              decoration: const InputDecoration(
-                labelText: 'Jenis Izin',
-                border: OutlineInputBorder(),
+              // Jenis Izin
+              DropdownButtonFormField<String>(
+                value: _jenisIzin,
+                decoration: const InputDecoration(
+                  labelText: 'Jenis Izin',
+                  border: OutlineInputBorder(),
+                ),
+                items:
+                    _jenisIzinList.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                onChanged: (value) {
+                  setState(() => _jenisIzin = value);
+                },
+                validator: (value) {
+                  if (value == null) return 'Pilih jenis izin';
+                  return null;
+                },
               ),
-              items:
-                  _jenisIzinList.map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-              onChanged: (value) {
-                setState(() => _jenisIzin = value);
-              },
-              validator: (value) {
-                if (value == null) return 'Pilih jenis izin';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Alasan Izin
-            TextFormField(
-              controller: _alasanController,
-              decoration: const InputDecoration(
-                labelText: 'Alasan Izin',
-                border: OutlineInputBorder(),
-                hintText: 'Jelaskan alasan izin Anda',
+              // Alasan Izin
+              TextFormField(
+                controller: _alasanController,
+                decoration: const InputDecoration(
+                  labelText: 'Alasan Izin',
+                  border: OutlineInputBorder(),
+                  hintText: 'Jelaskan alasan izin Anda',
+                ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Harap isi alasan izin';
+                  }
+                  return null;
+                },
               ),
-              maxLines: 3,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Harap isi alasan izin';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Tombol Submit
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _submitIzin,
-                child:
-                    _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('AJUKAN IZIN'),
+              // Tombol Submit
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submitIzin,
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator()
+                          : const Text('AJUKAN IZIN'),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -116,6 +116,13 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
+      appBar: AppBar(
+        title: const Text('Isi Absensi Siswa'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -286,173 +293,168 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     );
   }
 
-  Widget _buildDateHeader(DateTime date) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Hari Ini',
-          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
+  // ... (keep all the existing helper methods unchanged)
+  // _buildDateHeader, _buildStatusCard, _buildInputCard,
+  // _buildModernNumberField, _buildModernTextField
+}
 
-  Widget _buildStatusCard(String message, Color bgColor, Color textColor) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: textColor.withAlpha(100)),
+Widget _buildDateHeader(DateTime date) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Hari Ini', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+      const SizedBox(height: 4),
+      Text(
+        DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
       ),
-      child: Row(
-        children: [
-          Icon(
-            textColor == Colors.red[700]
-                ? Icons.error_outline
-                : Icons.check_circle_outline,
-            color: textColor,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+    ],
+  );
+}
+
+Widget _buildStatusCard(String message, Color bgColor, Color textColor) {
+  return Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: textColor.withAlpha(100)),
+    ),
+    child: Row(
+      children: [
+        Icon(
+          textColor == Colors.red[700]
+              ? Icons.error_outline
+              : Icons.check_circle_outline,
+          color: textColor,
+          size: 20,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            message,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputCard({
-    required String title,
-    required List<Widget> children,
-    required IconData icon,
-    required Color iconColor,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: iconColor),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(20),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(children: children),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildModernNumberField({
-    required TextEditingController controller,
-    required String label,
-    int? max,
-    required IconData icon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-        floatingLabelBehavior: FloatingLabelBehavior.never,
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
+Widget _buildInputCard({
+  required String title,
+  required List<Widget> children,
+  required IconData icon,
+  required Color iconColor,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
-        suffixText: 'siswa',
-        suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
       ),
-      style: const TextStyle(color: Colors.black87, fontSize: 14),
-      keyboardType: TextInputType.number,
-      validator: (value) {
-        if (value == null || value.isEmpty) return 'Harus diisi';
-        final num = int.tryParse(value);
-        if (num == null) return 'Harus angka';
-        if (max != null && num > max) return 'Maksimal $max';
-        return null;
-      },
-    );
-  }
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(20),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(children: children),
+      ),
+    ],
+  );
+}
 
-  Widget _buildModernTextField({
-    required TextEditingController controller,
-    required String label,
-    String? hint,
-    required IconData icon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-        floatingLabelBehavior: FloatingLabelBehavior.never,
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
+Widget _buildModernNumberField({
+  required TextEditingController controller,
+  required String label,
+  int? max,
+  required IconData icon,
+}) {
+  return TextFormField(
+    controller: controller,
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+      floatingLabelBehavior: FloatingLabelBehavior.never,
+      filled: true,
+      fillColor: Colors.grey[50],
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
       ),
-      style: const TextStyle(color: Colors.black87, fontSize: 14),
-      maxLines: 2,
-    );
-  }
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
+      suffixText: 'siswa',
+      suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+    ),
+    style: const TextStyle(color: Colors.black87, fontSize: 14),
+    keyboardType: TextInputType.number,
+    validator: (value) {
+      if (value == null || value.isEmpty) return 'Harus diisi';
+      final num = int.tryParse(value);
+      if (num == null) return 'Harus angka';
+      if (max != null && num > max) return 'Maksimal $max';
+      return null;
+    },
+  );
+}
+
+Widget _buildModernTextField({
+  required TextEditingController controller,
+  required String label,
+  String? hint,
+  required IconData icon,
+}) {
+  return TextFormField(
+    controller: controller,
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+      floatingLabelBehavior: FloatingLabelBehavior.never,
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+      filled: true,
+      fillColor: Colors.grey[50],
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
+    ),
+    style: const TextStyle(color: Colors.black87, fontSize: 14),
+    maxLines: 2,
+  );
 }

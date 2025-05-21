@@ -2,47 +2,28 @@ import 'package:bakid/features/guru/izin/ajukan_izin_page.dart';
 import 'package:bakid/features/guru/izin/riwayat_izin_page.dart';
 import 'package:flutter/material.dart';
 
-class PerizinanPage extends StatefulWidget {
+class PerizinanPage extends StatelessWidget {
   const PerizinanPage({super.key});
-
-  @override
-  State<PerizinanPage> createState() => _PerizinanPageState();
-}
-
-class _PerizinanPageState extends State<PerizinanPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         title: const Text('Perizinan Guru'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.add)),
-            Tab(icon: Icon(Icons.history)),
-          ],
-        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.assignment_add),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AjukanIzinPage()),
+              );
+            },
+          ),
+        ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [AjukanIzinPage(), RiwayatIzinPage()],
-      ),
+      body: const RiwayatIzinPage(),
     );
   }
 }

@@ -13,22 +13,7 @@ class AbsenTabPage extends ConsumerStatefulWidget {
   ConsumerState<AbsenTabPage> createState() => _AbsenTabPageState();
 }
 
-class _AbsenTabPageState extends ConsumerState<AbsenTabPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _AbsenTabPageState extends ConsumerState<AbsenTabPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,21 +23,19 @@ class _AbsenTabPageState extends ConsumerState<AbsenTabPage>
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 1,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.blue,
-          labelColor: Colors.blue,
-          unselectedLabelColor: Colors.grey[600],
-          tabs: const [
-            Tab(icon: Icon(Icons.fingerprint)),
-            Tab(icon: Icon(Icons.history_rounded)),
-          ],
-        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.fingerprint),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AbsenContent()),
+              );
+            },
+          ),
+        ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [AbsenContent(), RiwayatAbsenContent()],
-      ),
+      body: const RiwayatAbsenContent(),
     );
   }
 }
@@ -241,32 +224,47 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_errorMessage.isNotEmpty)
-            _buildStatusCard(_errorMessage, Colors.red[50]!, Colors.red),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Absen Sekarang'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_errorMessage.isNotEmpty)
+              _buildStatusCard(_errorMessage, Colors.red[50]!, Colors.red),
 
-          if (_successMessage.isNotEmpty)
-            _buildStatusCard(_successMessage, Colors.green[50]!, Colors.green),
+            if (_successMessage.isNotEmpty)
+              _buildStatusCard(
+                _successMessage,
+                Colors.green[50]!,
+                Colors.green,
+              ),
 
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator(color: Colors.blue)),
+            if (_isLoading)
+              const Center(
+                child: CircularProgressIndicator(color: Colors.blue),
+              ),
 
-          if (!_isLoading && _jadwalHariIni.isEmpty) _buildEmptyScheduleUI(),
+            if (!_isLoading && _jadwalHariIni.isEmpty) _buildEmptyScheduleUI(),
 
-          if (_jadwalHariIni.isNotEmpty) ...[
-            _buildScheduleSelection(theme),
-            const SizedBox(height: 24),
+            if (_jadwalHariIni.isNotEmpty) ...[
+              _buildScheduleSelection(theme),
+              const SizedBox(height: 24),
 
-            if (_selectedJadwal != null) _buildScheduleDetailsCard(theme),
+              if (_selectedJadwal != null) _buildScheduleDetailsCard(theme),
 
-            const SizedBox(height: 24),
-            _buildAbsenButton(),
+              const SizedBox(height: 24),
+              _buildAbsenButton(),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
