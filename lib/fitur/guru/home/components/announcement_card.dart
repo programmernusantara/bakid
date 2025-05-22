@@ -58,12 +58,37 @@ class AnnouncementCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title and date first
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                if (date != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('d MMM y, HH:mm').format(date!),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Image in the middle
           if (imageUrl != null)
             GestureDetector(
               onTap: () => _showFullImage(context, imageUrl!),
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(14),
+                  top: Radius.circular(0),
                 ),
                 child: Image.network(
                   imageUrl!,
@@ -73,28 +98,13 @@ class AnnouncementCard extends StatelessWidget {
                 ),
               ),
             ),
+
+          // Description/content at the bottom
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(content, style: TextStyle(color: Colors.grey[700])),
-                if (date != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    DateFormat('d MMM y, HH:mm').format(date!),
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
-              ],
+            child: Text(
+              content,
+              style: TextStyle(color: Colors.grey[800], fontSize: 14),
             ),
           ),
         ],
