@@ -1,7 +1,7 @@
+// jadwal_izin_dropdown.dart
 import 'package:bakid/fitur/guru/izin/izin_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 class JadwalIzinDropdown extends ConsumerWidget {
   const JadwalIzinDropdown({super.key});
@@ -22,44 +22,51 @@ class JadwalIzinDropdown extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tanggalIzin = ref.watch(izinDateRangeProvider);
-    final jadwalFuture = ref.watch(jadwalIzinProvider);
+    final jadwalFuture = ref.watch(jadwalHariIniProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (tanggalIzin != null)
-          Text(
-            'Rentang: ${DateFormat('dd/MM/yyyy').format(tanggalIzin.start)} '
-            '- ${DateFormat('dd/MM/yyyy').format(tanggalIzin.end)}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        const SizedBox(height: 8),
-        jadwalFuture.when(
-          loading: () => const CircularProgressIndicator(),
-          error: (error, _) => Text('Error: $error'),
-          data: (jadwal) {
-            if (jadwal.isEmpty) {
-              return const Column(
-                children: [
-                  Text('Tidak ada jadwal yang memerlukan izin'),
-                  SizedBox(height: 4),
-                  Text(
-                    'Semua jadwal di rentang tanggal ini sudah memiliki izin aktif',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
-              );
-            }
+    return jadwalFuture.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Text('Error: $error'),
+      data: (jadwal) {
+        if (jadwal.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.schedule, size: 48, color: Colors.grey),
+                SizedBox(height: 8),
+                Text(
+                  'Anda tidak mempunyai jadwal untuk izin',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Semua jadwal di rentang tanggal ini sudah memiliki izin aktif',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
 
-            // Kelompokkan jadwal per hari
-            final jadwalPerHari = <int, List<Map<String, dynamic>>>{};
-            for (final j in jadwal) {
-              final hari = j['hari_dalam_minggu'];
-              jadwalPerHari.putIfAbsent(hari, () => []).add(j);
-            }
+        // Group schedules by day
+        final jadwalPerHari = <int, List<Map<String, dynamic>>>{};
+        for (final j in jadwal) {
+          final hari = j['hari_dalam_minggu'];
+          jadwalPerHari.putIfAbsent(hari, () => []).add(j);
+        }
 
-            return Column(
+        return Card(
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children:
                   jadwalPerHari.entries.map((entry) {
                     return Column(
@@ -67,32 +74,53 @@ class JadwalIzinDropdown extends ConsumerWidget {
                       children: [
                         Text(
                           _dayName(entry.key),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
+                        const SizedBox(height: 8),
                         ...entry.value.map((j) {
                           final kelas = j['kelas'] as Map<String, dynamic>?;
                           final mapel =
                               j['mata_pelajaran'] as Map<String, dynamic>?;
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              '${mapel?['nama'] ?? 'Mata Pelajaran'}',
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            subtitle: Text(
-                              'Kelas ${kelas?['nama'] ?? ''} - '
-                              '${j['waktu_mulai']} s/d ${j['waktu_selesai']}',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${mapel?['nama'] ?? 'Mata Pelajaran'}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Kelas ${kelas?['nama'] ?? ''} - '
+                                  '${j['waktu_mulai']} s/d ${j['waktu_selesai']}',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
-                            dense: true,
                           );
                         }),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                       ],
                     );
                   }).toList(),
-            );
-          },
-        ),
-      ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

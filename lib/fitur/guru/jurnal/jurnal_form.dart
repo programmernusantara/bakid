@@ -177,9 +177,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed:
-              () =>
-                  Navigator.of(context).pop(), // Kembali ke halaman sebelumnya
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       backgroundColor: theme.colorScheme.surface,
@@ -357,7 +355,8 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                   _buildInputSection(
                     icon: Iconsax.document_text,
                     title: 'Materi yang Diajarkan',
-                    hint: 'Masukkan materi yang diajarkan',
+                    hint:
+                        'Masukkan materi yang diajarkan (من ... إلى / dari ... sampai)',
                     controller: _materiController,
                     maxLines: 4,
                     isRequired: true,
@@ -368,7 +367,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                   _buildInputSection(
                     icon: Iconsax.warning_2,
                     title: 'Kendala',
-                    hint: 'Masukkan kendala yang dihadapi (opsional)',
+                    hint: 'Masukkan kendala yang dihadapi',
                     controller: _kendalaController,
                     maxLines: 3,
                     theme: theme,
@@ -378,7 +377,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                   _buildInputSection(
                     icon: Iconsax.lamp_charge,
                     title: 'Solusi',
-                    hint: 'Masukkan solusi yang dilakukan (opsional)',
+                    hint: 'Masukkan solusi yang dilakukan',
                     controller: _solusiController,
                     maxLines: 3,
                     theme: theme,
@@ -391,12 +390,18 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                     height: 50,
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
+                        backgroundColor:
+                            Colors.blue[600], // Warna biru yang lebih soft
+                        foregroundColor: Colors.white, // Warna teks putih
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(
+                            8,
+                          ), // Border radius lebih kecil
                         ),
                         elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ), // Padding horizontal
                       ),
                       onPressed: _isLoading ? null : _submit,
                       child:
@@ -406,13 +411,18 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: theme.colorScheme.onPrimary,
+                                  color:
+                                      Colors
+                                          .white, // Warna loading indicator putih
                                 ),
                               )
                               : Text(
                                 'SIMPAN JURNAL',
-                                style: theme.textTheme.labelLarge?.copyWith(
+                                style: TextStyle(
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
+                                  letterSpacing:
+                                      0.5, // Sedikit letter spacing untuk keterbacaan
                                 ),
                               ),
                     ),

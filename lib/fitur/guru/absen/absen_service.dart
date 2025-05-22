@@ -60,9 +60,7 @@ class AbsenService {
         .from('permohonan_izin')
         .select()
         .eq('guru_id', guruId)
-        .eq('status', 'disetujui')
-        .lte('tanggal_mulai', tanggal)
-        .gte('tanggal_selesai', tanggal);
+        .eq('status', 'disetujui');
 
     return response.isNotEmpty;
   }

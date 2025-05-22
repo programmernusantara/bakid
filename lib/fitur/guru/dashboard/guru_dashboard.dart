@@ -44,7 +44,6 @@ class _GuruDashboardState extends State<GuruDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       body: PageTransitionSwitcher(
         duration: const Duration(milliseconds: 300),
         transitionBuilder: (child, animation, secondaryAnimation) {
@@ -61,9 +60,9 @@ class _GuruDashboardState extends State<GuruDashboard> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(100),
+              color: Colors.black.withAlpha(50),
               blurRadius: 10,
-              offset: const Offset(0, -5),
+              offset: const Offset(0, -3),
             ),
           ],
         ),

@@ -26,36 +26,33 @@ class JurnalCard extends StatelessWidget {
     final hariIndex = jadwal?['hari_dalam_minggu'] as int?;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(100),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withAlpha(100),
+          width: 1,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with subject and class
+            // Header
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withAlpha(100),
-                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Iconsax.book_1,
                     size: 20,
-                    color: theme.colorScheme.primary,
+                    color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -69,10 +66,11 @@ class JurnalCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         kelas?['nama'] ?? 'Kelas',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withAlpha(100),
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -83,13 +81,18 @@ class JurnalCard extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Date and time row
+            // Divider
+            Divider(height: 1, color: theme.colorScheme.outline.withAlpha(100)),
+
+            const SizedBox(height: 16),
+
+            // Date and time
             Wrap(
               spacing: 16,
               runSpacing: 8,
               children: [
                 _buildInfoItem(
-                  icon: Iconsax.calendar,
+                  icon: Iconsax.calendar_1,
                   text:
                       tanggal != null
                           ? DateFormat('d MMM y', 'id_ID').format(tanggal)
@@ -110,7 +113,7 @@ class JurnalCard extends StatelessWidget {
 
             // Content sections
             _buildContentSection(
-              icon: Iconsax.document_text_1,
+              icon: Iconsax.document_text,
               title: 'Materi',
               content: jurnal['materi_yang_dipelajari'] ?? '-',
               theme: theme,
@@ -119,7 +122,7 @@ class JurnalCard extends StatelessWidget {
             if (jurnal['kendala'] != null &&
                 jurnal['kendala'].toString().isNotEmpty)
               _buildContentSection(
-                icon: Iconsax.warning_2,
+                icon: Iconsax.info_circle,
                 title: 'Kendala',
                 content: jurnal['kendala'],
                 theme: theme,
@@ -147,12 +150,12 @@ class JurnalCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: theme.colorScheme.onSurface.withAlpha(100)),
+        Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
         const SizedBox(width: 6),
         Text(
           text,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withAlpha(100),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -184,16 +187,17 @@ class JurnalCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               content,
               style: theme.textTheme.bodyMedium?.copyWith(
                 height: 1.5,
-                color: theme.colorScheme.onSurface.withAlpha(100),
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),

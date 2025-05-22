@@ -27,7 +27,7 @@ class JurnalPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.grey[200],
       appBar: AppBar(
         title: Text(
           'Riwayat Jurnal',
@@ -36,7 +36,7 @@ class JurnalPage extends ConsumerWidget {
           ),
         ),
         centerTitle: true,
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Iconsax.add),

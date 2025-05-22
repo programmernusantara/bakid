@@ -10,8 +10,9 @@ class AbsensiSiswaPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
+        backgroundColor: Colors.white,
         centerTitle: true,
-        title: const Text('Siswa'),
+        title: const Text('Absensi Siswa'),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),

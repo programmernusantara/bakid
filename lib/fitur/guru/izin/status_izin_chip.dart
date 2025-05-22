@@ -1,3 +1,4 @@
+// status_izin_chip.dart
 import 'package:flutter/material.dart';
 
 class StatusIzinChip extends StatelessWidget {
@@ -7,25 +8,38 @@ class StatusIzinChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(
-        status.toUpperCase(),
-        style: const TextStyle(fontSize: 12, color: Colors.white),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _getStatusColor(status).withAlpha(100),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _getStatusColor(status).withAlpha(100),
+          width: 1,
+        ),
       ),
-      backgroundColor: _getStatusColor(status),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: _getStatusColor(status),
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'disetujui':
-        return Colors.green;
+        return const Color(0xFF00A86B); // Green
       case 'ditolak':
-        return Colors.red;
+        return const Color(0xFFF04438); // Red
       case 'menunggu':
-        return Colors.orange;
+        return const Color(0xFFF79009); // Orange
       default:
-        return Colors.grey;
+        return const Color(0xFF667085); // Gray
     }
   }
 }

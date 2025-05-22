@@ -20,7 +20,7 @@ class _AbsenTabPageState extends ConsumerState<AbsenTabPage> {
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text("Absensi"),
+        title: const Text("Kehadiran Guru"),
         centerTitle: true,
         elevation: 0,
         actions: [
@@ -272,6 +272,7 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
         backgroundColor: Colors.white,
+        centerTitle: true,
         title: const Text('Absen Sekarang'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

@@ -1,10 +1,10 @@
 import 'package:bakid/core/services/auth_service.dart';
+import 'package:bakid/fitur/auth/auth_providers.dart';
 import 'package:bakid/fitur/guru/kehadiran_siswa/absensi_siswa_providers.dart';
 import 'package:bakid/fitur/guru/kehadiran_siswa/jadwal_absensi_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:bakid/fitur/auth/auth_providers.dart';
 
 class IsiAbsensiSiswaPage extends ConsumerStatefulWidget {
   const IsiAbsensiSiswaPage({super.key});
@@ -25,6 +25,16 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
   bool _isLoading = false;
   String _errorMessage = '';
   String _successMessage = '';
+
+  @override
+  void dispose() {
+    _jumlahHadirController.dispose();
+    _jumlahIzinController.dispose();
+    _namaIzinController.dispose();
+    _jumlahAlpaController.dispose();
+    _namaAlpaController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submitAbsensi(Map<String, dynamic>? selectedJadwal) async {
     if (!_formKey.currentState!.validate()) return;
@@ -100,361 +110,369 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
   }
 
   @override
-  void dispose() {
-    _jumlahHadirController.dispose();
-    _jumlahIzinController.dispose();
-    _namaIzinController.dispose();
-    _jumlahAlpaController.dispose();
-    _namaAlpaController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final currentDate = DateTime.now();
     Theme.of(context);
+    final currentDate = DateTime.now();
 
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Isi Absensi Siswa'),
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        elevation: 0,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Date Header
-              _buildDateHeader(currentDate),
-              const SizedBox(height: 24),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final jadwal = ref.watch(absensiSiswaJadwalProvider);
 
-              // Status messages
-              if (_errorMessage.isNotEmpty)
-                _buildStatusCard(
-                  _errorMessage,
-                  Colors.red[50]!,
-                  Colors.red[700]!,
-                ),
-
-              if (_successMessage.isNotEmpty)
-                _buildStatusCard(
-                  _successMessage,
-                  Colors.green[50]!,
-                  Colors.green[700]!,
-                ),
-
-              const SizedBox(height: 8),
-              const JadwalAbsensiDropdown(),
-              const SizedBox(height: 16),
-
-              // Form Section
-              Consumer(
-                builder: (context, ref, _) {
-                  final selectedJadwal = ref.watch(
-                    absensiSiswaSelectedJadwalProvider,
-                  );
-                  return Form(
-                    key: _formKey,
+            return jadwal.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(child: Text('Error: $error')),
+              data: (data) {
+                if (data.isEmpty) {
+                  return Center(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Section Header
-                        const Text(
-                          'Data Absensi',
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Tidak ada jadwal mengajar hari ini',
                           style: TextStyle(
+                            color: Colors.grey[600],
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Hadir Section
-                        _buildInputCard(
-                          title: 'Hadir',
-                          icon: Icons.check_circle_outline,
-                          iconColor: Colors.green,
-                          children: [
-                            _buildModernNumberField(
-                              controller: _jumlahHadirController,
-                              label: 'Jumlah Siswa Hadir',
-                              max: selectedJadwal?['kelas']?['jumlah_murid'],
-                              icon: Icons.people_alt_outlined,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Izin Section
-                        _buildInputCard(
-                          title: 'Izin',
-                          icon: Icons.help_outline,
-                          iconColor: Colors.blue,
-                          children: [
-                            _buildModernNumberField(
-                              controller: _jumlahIzinController,
-                              label: 'Jumlah Siswa Izin',
-                              max: selectedJadwal?['kelas']?['jumlah_murid'],
-                              icon: Icons.people_alt_outlined,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildModernTextField(
-                              controller: _namaIzinController,
-                              label: 'Nama Siswa Izin',
-                              hint: 'Pisahkan dengan koma',
-                              icon: Icons.list_alt_outlined,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Alpa Section
-                        _buildInputCard(
-                          title: 'Alpa',
-                          icon: Icons.highlight_off_outlined,
-                          iconColor: Colors.red,
-                          children: [
-                            _buildModernNumberField(
-                              controller: _jumlahAlpaController,
-                              label: 'Jumlah Siswa Alpa',
-                              max: selectedJadwal?['kelas']?['jumlah_murid'],
-                              icon: Icons.people_alt_outlined,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildModernTextField(
-                              controller: _namaAlpaController,
-                              label: 'Nama Siswa Alpa',
-                              hint: 'Pisahkan dengan koma',
-                              icon: Icons.list_alt_outlined,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Submit Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed:
-                                _isLoading
-                                    ? null
-                                    : () => _submitAbsensi(selectedJadwal),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child:
-                                _isLoading
-                                    ? const SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 3,
-                                      ),
-                                    )
-                                    : const Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.save_alt_outlined, size: 20),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'SIMPAN ABSENSI',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
                           ),
                         ),
                       ],
                     ),
                   );
-                },
-              ),
-            ],
-          ),
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Section
+                      _buildHeaderSection(currentDate),
+                      const SizedBox(height: 24),
+
+                      // Status messages
+                      if (_errorMessage.isNotEmpty)
+                        _buildStatusMessage(
+                          _errorMessage,
+                          Icons.error_outline_rounded,
+                          Colors.red,
+                        ),
+                      if (_successMessage.isNotEmpty)
+                        _buildStatusMessage(
+                          _successMessage,
+                          Icons.check_circle_outline_rounded,
+                          Colors.green,
+                        ),
+                      const SizedBox(height: 16),
+
+                      // Schedule Dropdown
+                      const JadwalAbsensiDropdown(),
+                      const SizedBox(height: 24),
+
+                      // Form Section
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final selectedJadwal = ref.watch(
+                            absensiSiswaSelectedJadwalProvider,
+                          );
+                          return Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Hadir Section
+                                _buildSectionTitle('Kehadiran Siswa'),
+                                const SizedBox(height: 16),
+                                _buildAttendanceCard(
+                                  icon: Icons.check_circle_rounded,
+                                  iconColor: Colors.green,
+                                  title: 'Hadir',
+                                  controller: _jumlahHadirController,
+                                  label: 'Jumlah siswa hadir',
+                                  max:
+                                      selectedJadwal?['kelas']?['jumlah_murid'],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Izin Section
+                                _buildAttendanceCard(
+                                  icon: Icons.person_outline_rounded,
+                                  iconColor: Colors.orange,
+                                  title: 'Izin',
+                                  controller: _jumlahIzinController,
+                                  label: 'Jumlah siswa izin',
+                                  max:
+                                      selectedJadwal?['kelas']?['jumlah_murid'],
+                                  additionalField: _buildNameField(
+                                    controller: _namaIzinController,
+                                    label: 'Nama siswa izin',
+                                    hint: 'Contoh: Andi, Budi, Caca',
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Alpa Section
+                                _buildAttendanceCard(
+                                  icon: Icons.person_off_rounded,
+                                  iconColor: Colors.red,
+                                  title: 'Alpa',
+                                  controller: _jumlahAlpaController,
+                                  label: 'Jumlah siswa alpa',
+                                  max:
+                                      selectedJadwal?['kelas']?['jumlah_murid'],
+                                  additionalField: _buildNameField(
+                                    controller: _namaAlpaController,
+                                    label: 'Nama siswa alpa',
+                                    hint: 'Contoh: Dedi, Eka, Fani',
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+
+                                // Submit Button
+                                _buildSubmitButton(selectedJadwal),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         ),
       ),
     );
   }
 
-  // ... (keep all the existing helper methods unchanged)
-  // _buildDateHeader, _buildStatusCard, _buildInputCard,
-  // _buildModernNumberField, _buildModernTextField
-}
-
-Widget _buildDateHeader(DateTime date) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text('Hari Ini', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-      const SizedBox(height: 4),
-      Text(
-        DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-        ),
-      ),
-    ],
-  );
-}
-
-Widget _buildStatusCard(String message, Color bgColor, Color textColor) {
-  return Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: textColor.withAlpha(100)),
-    ),
-    child: Row(
+  Widget _buildHeaderSection(DateTime date) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          textColor == Colors.red[700]
-              ? Icons.error_outline
-              : Icons.check_circle_outline,
-          color: textColor,
-          size: 20,
+        Text(
+          'Hari Ini',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            message,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+        const SizedBox(height: 4),
+        Text(
+          DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
         ),
       ],
-    ),
-  );
-}
+    );
+  }
 
-Widget _buildInputCard({
-  required String title,
-  required List<Widget> children,
-  required IconData icon,
-  required Color iconColor,
-}) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: 8),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: iconColor),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+  Widget _buildStatusMessage(String message, IconData icon, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withAlpha(100),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 24, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      Container(
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildAttendanceCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required TextEditingController controller,
+    required String label,
+    int? max,
+    Widget? additionalField,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!, width: 1),
+      ),
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(20),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: iconColor.withAlpha(100),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 20, color: iconColor),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+            _buildNumberInput(controller: controller, label: label, max: max),
+            if (additionalField != null) ...[
+              const SizedBox(height: 12),
+              additionalField,
+            ],
           ],
         ),
-        child: Column(children: children),
       ),
-    ],
-  );
-}
+    );
+  }
 
-Widget _buildModernNumberField({
-  required TextEditingController controller,
-  required String label,
-  int? max,
-  required IconData icon,
-}) {
-  return TextFormField(
-    controller: controller,
-    decoration: InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-      floatingLabelBehavior: FloatingLabelBehavior.never,
-      filled: true,
-      fillColor: Colors.grey[50],
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
+  Widget _buildNumberInput({
+    required TextEditingController controller,
+    required String label,
+    int? max,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[600]),
+        floatingLabelBehavior: FloatingLabelBehavior.never,
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        suffixText: 'siswa',
+        suffixStyle: TextStyle(color: Colors.grey[600]),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
-      suffixText: 'siswa',
-      suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-    ),
-    style: const TextStyle(color: Colors.black87, fontSize: 14),
-    keyboardType: TextInputType.number,
-    validator: (value) {
-      if (value == null || value.isEmpty) return 'Harus diisi';
-      final num = int.tryParse(value);
-      if (num == null) return 'Harus angka';
-      if (max != null && num > max) return 'Maksimal $max';
-      return null;
-    },
-  );
-}
+      style: const TextStyle(color: Colors.black87),
+      keyboardType: TextInputType.number,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Harus diisi';
+        final num = int.tryParse(value);
+        if (num == null) return 'Harus angka';
+        if (max != null && num > max) return 'Maksimal $max';
+        return null;
+      },
+    );
+  }
 
-Widget _buildModernTextField({
-  required TextEditingController controller,
-  required String label,
-  String? hint,
-  required IconData icon,
-}) {
-  return TextFormField(
-    controller: controller,
-    decoration: InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-      floatingLabelBehavior: FloatingLabelBehavior.never,
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-      filled: true,
-      fillColor: Colors.grey[50],
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
+  Widget _buildNameField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[600]),
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[500]),
+        floatingLabelBehavior: FloatingLabelBehavior.never,
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      prefixIcon: Icon(icon, size: 20, color: Colors.grey[600]),
-    ),
-    style: const TextStyle(color: Colors.black87, fontSize: 14),
-    maxLines: 2,
-  );
+      style: const TextStyle(color: Colors.black87),
+      maxLines: 2,
+    );
+  }
+
+  Widget _buildSubmitButton(Map<String, dynamic>? selectedJadwal) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : () => _submitAbsensi(selectedJadwal),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child:
+            _isLoading
+                ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+                : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.save_rounded, size: 20),
+                    SizedBox(width: 8),
+                    Text('Simpan Absensi'),
+                  ],
+                ),
+      ),
+    );
+  }
 }
