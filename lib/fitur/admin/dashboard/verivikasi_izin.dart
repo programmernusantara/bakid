@@ -24,7 +24,17 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
   Future<List<Map<String, dynamic>>> fetchIzin() async {
     final response = await supabase
         .from('permohonan_izin')
-        .select('*, profil_guru(nama_lengkap)')
+        .select('''
+          *, 
+          profil_guru(nama_lengkap, asal_daerah),
+          jadwal_mengajar(
+            waktu_mulai, 
+            waktu_selesai, 
+            hari_dalam_minggu,
+            kelas(nama),
+            mata_pelajaran(nama)
+          )
+        ''')
         .eq('status', selectedStatus)
         .order('dibuat_pada', ascending: false);
 
@@ -46,6 +56,27 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
         .eq('id', id);
 
     if (mounted) setState(() {});
+  }
+
+  String _convertHari(int hari) {
+    switch (hari) {
+      case 1:
+        return 'Senin';
+      case 2:
+        return 'Selasa';
+      case 3:
+        return 'Rabu';
+      case 4:
+        return 'Kamis';
+      case 5:
+        return 'Jumat';
+      case 6:
+        return 'Sabtu';
+      case 7:
+        return 'Minggu';
+      default:
+        return 'Tidak Diketahui';
+    }
   }
 
   Widget buildStatusBadge(String status) {
@@ -123,25 +154,30 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
 
           final izinList = snapshot.data!;
           if (izinList.isEmpty) {
-            return const Center(child: Text('Tidak ada permohonan izin'));
+            return const Center(
+              child: Text('Tidak ada permohonan izin dengan status ini'),
+            );
           }
 
           return RefreshIndicator(
-            onRefresh: () async {
-              setState(() {});
-            },
+            onRefresh: () async => setState(() {}),
             child: ListView.builder(
               padding: const EdgeInsets.only(top: 8, bottom: 16),
               itemCount: izinList.length,
               itemBuilder: (context, index) {
                 final izin = izinList[index];
-                final guru = izin['profil_guru'];
+                final guru = izin['profil_guru'] as Map<String, dynamic>? ?? {};
+                final jadwal =
+                    izin['jadwal_mengajar'] as Map<String, dynamic>? ?? {};
+                final kelas = jadwal['kelas'] as Map<String, dynamic>? ?? {};
+                final mataPelajaran =
+                    jadwal['mata_pelajaran'] as Map<String, dynamic>? ?? {};
 
                 return Card(
                   elevation: 0,
                   margin: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 12,
+                    vertical: 8,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -156,69 +192,96 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
-                              child: Text(
-                                guru?['nama_lengkap'] ?? 'Tanpa Nama',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    guru['nama_lengkap'] ?? 'Tanpa Nama',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Daerah: ${guru['asal_daerah'] ?? '-'}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             buildStatusBadge(izin['status']),
                           ],
                         ),
                         const SizedBox(height: 16),
+
+                        // Informasi Jadwal
+                        if (jadwal.isNotEmpty) ...[
+                          const Text(
+                            'Jadwal yang Diizin:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildInfoRow(
+                            Icons.school,
+                            'Kelas',
+                            kelas['nama'] ?? '-',
+                          ),
+                          _buildInfoRow(
+                            Icons.menu_book,
+                            'Mata Pelajaran',
+                            mataPelajaran['nama'] ?? '-',
+                          ),
+                          _buildInfoRow(
+                            Icons.calendar_today,
+                            'Hari',
+                            _convertHari(jadwal['hari_dalam_minggu'] ?? 0),
+                          ),
+                          _buildInfoRow(
+                            Icons.access_time,
+                            'Jam',
+                            '${jadwal['waktu_mulai']} - ${jadwal['waktu_selesai']}',
+                          ),
+                          const Divider(),
+                        ],
+
+                        // Informasi Izin
                         _buildInfoRow(
-                          Icons.description_outlined,
+                          Icons.description,
                           'Jenis Izin',
                           izin['jenis_izin'],
                         ),
-                        const Divider(thickness: 1.2),
+                        _buildInfoRow(Icons.note, 'Alasan', izin['alasan']),
                         _buildInfoRow(
-                          Icons.notes_outlined,
-                          'Alasan',
-                          izin['alasan'],
+                          Icons.date_range,
+                          'Tanggal Efektif',
+                          izin['tanggal_efektif']?.toString() ?? '-',
                         ),
-                        const Divider(thickness: 1.2),
-                        _buildInfoRow(
-                          Icons.date_range_outlined,
-                          'Tanggal Mulai',
-                          izin['tanggal_mulai'],
-                        ),
-                        const Divider(thickness: 1.2),
-                        _buildInfoRow(
-                          Icons.date_range_outlined,
-                          'Tanggal Selesai',
-                          izin['tanggal_selesai'],
-                        ),
-                        const SizedBox(height: 12),
-                        if (izin['status'] == 'menunggu')
+
+                        // Catatan Admin jika ada
+                        if (izin['catatan_admin'] != null) ...[
+                          const Divider(),
+                          _buildInfoRow(
+                            Icons.admin_panel_settings,
+                            'Catatan Admin',
+                            izin['catatan_admin'],
+                          ),
+                        ],
+
+                        // Tombol Aksi untuk permohonan yang menunggu
+                        if (izin['status'] == 'menunggu') ...[
+                          const SizedBox(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               ElevatedButton.icon(
-                                icon: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                ),
-                                label: const Text('Setujui'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  _showCatatanDialog(izin['id'], 'disetujui');
-                                },
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton.icon(
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                ),
+                                icon: const Icon(Icons.close, size: 18),
                                 label: const Text('Tolak'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
@@ -226,12 +289,33 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                onPressed: () {
-                                  _showCatatanDialog(izin['id'], 'ditolak');
-                                },
+                                onPressed:
+                                    () => _showCatatanDialog(
+                                      izin['id'],
+                                      'ditolak',
+                                      currentCatatan: izin['catatan_admin'],
+                                    ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.check, size: 18),
+                                label: const Text('Setujui'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed:
+                                    () => _showCatatanDialog(
+                                      izin['id'],
+                                      'disetujui',
+                                      currentCatatan: izin['catatan_admin'],
+                                    ),
                               ),
                             ],
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -244,33 +328,32 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String? value) {
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: Colors.blueGrey),
           const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                text: '$label: ',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                  fontSize: 14,
-                ),
-                children: [
-                  TextSpan(
-                    text: value ?? '-',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.normal,
-                      color: Colors.black54,
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
+              ],
             ),
           ),
         ],
@@ -278,35 +361,54 @@ class _VerifikasiIzinPageState extends ConsumerState<VerifikasiIzinPage> {
     );
   }
 
-  void _showCatatanDialog(String id, String status) {
-    final TextEditingController catatanController = TextEditingController();
+  void _showCatatanDialog(String id, String status, {String? currentCatatan}) {
+    final catatanController = TextEditingController(text: currentCatatan);
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(status == 'disetujui' ? 'Setujui Izin' : 'Tolak Izin'),
+          title: Text(
+            status == 'disetujui' ? 'Setujui Permohonan' : 'Tolak Permohonan',
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text(
+                status == 'disetujui'
+                    ? 'Berikan catatan untuk guru (opsional):'
+                    : 'Berikan alasan penolakan:',
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: catatanController,
-                decoration: const InputDecoration(labelText: 'Catatan Admin'),
+                decoration: InputDecoration(
+                  hintText: 'Masukkan catatan...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                maxLines: 3,
               ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                updateStatus(id, status, catatanController.text);
-                Navigator.of(context).pop();
-              },
-              child: const Text('Simpan'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                updateStatus(
+                  id,
+                  status,
+                  catatanController.text.isNotEmpty
+                      ? catatanController.text
+                      : null,
+                );
+                Navigator.pop(context);
               },
-              child: const Text('Batal'),
+              child: Text(status == 'disetujui' ? 'Setujui' : 'Tolak'),
             ),
           ],
         );

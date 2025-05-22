@@ -5,59 +5,59 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AktivitasGuru {
   final String jadwalId;
   final String namaGuru;
-  final String hari;
-  final String jamPelajaran;
+  final String daerah;
   final String kelas;
   final String mataPelajaran;
-  final String statusKegiatan;
+  final String jamPelajaran;
+  final String hari;
   final String statusAbsensi;
+  final String statusKegiatan;
   final String jurnal;
-  final String daerah;
 
   AktivitasGuru({
     required this.jadwalId,
     required this.namaGuru,
-    required this.hari,
-    required this.jamPelajaran,
+    required this.daerah,
     required this.kelas,
     required this.mataPelajaran,
-    required this.statusKegiatan,
+    required this.jamPelajaran,
+    required this.hari,
     required this.statusAbsensi,
+    required this.statusKegiatan,
     required this.jurnal,
-    required this.daerah,
   });
 
   factory AktivitasGuru.fromMap(Map<String, dynamic> map) {
     return AktivitasGuru(
-      jadwalId: map['jadwal_id'] ?? '',
-      namaGuru: map['nama_guru'] ?? '',
-      hari: map['hari'] ?? '',
-      jamPelajaran: map['jam_pelajaran'] ?? '',
-      kelas: map['kelas'] ?? '',
-      mataPelajaran: map['mata_pelajaran'] ?? '',
-      statusKegiatan: map['status_kegiatan'] ?? '',
-      statusAbsensi: map['status_absensi'] ?? '',
-      jurnal: map['jurnal'] ?? '',
-      daerah: map['daerah'] ?? '',
+      jadwalId: map['jadwal_id']?.toString() ?? '',
+      namaGuru: map['nama_guru']?.toString() ?? '',
+      daerah: map['daerah']?.toString() ?? '',
+      kelas: map['kelas']?.toString() ?? '',
+      mataPelajaran: map['mata_pelajaran']?.toString() ?? '',
+      jamPelajaran: map['jam_pelajaran']?.toString() ?? '',
+      hari: map['hari']?.toString() ?? '',
+      statusAbsensi: map['status_absensi']?.toString() ?? '',
+      statusKegiatan: map['status_kegiatan']?.toString() ?? '',
+      jurnal: map['jurnal']?.toString() ?? 'Belum diisi',
     );
   }
 }
 
-final aktivitasGuruProvider = StreamProvider.family
-    .autoDispose<List<AktivitasGuru>, String>((ref, filter) {
-      final supabase = Supabase.instance.client;
-      return supabase
-          .from('aktivitas_harian_guru_view')
-          .stream(primaryKey: ['jadwal_id'])
-          .order('jam_pelajaran')
-          .map((data) {
-            final list = data.map((e) => AktivitasGuru.fromMap(e)).toList();
-            if (filter == 'Semua') return list;
-            return list
-                .where((e) => e.statusKegiatan.contains(filter))
-                .toList();
-          });
-    });
+final aktivitasGuruProvider = StreamProvider<List<AktivitasGuru>>((ref) {
+  final supabase = Supabase.instance.client;
+  return supabase
+      .from('aktivitas_harian_guru_view')
+      .stream(primaryKey: ['jadwal_id'])
+      .order('jam_pelajaran') // Menggunakan jam_pelajaran yang tersedia
+      .map((data) {
+        // Konversi ke model
+        final list = data.map((e) => AktivitasGuru.fromMap(e)).toList();
+
+        // Urutkan secara manual jika diperlukan
+        list.sort((a, b) => a.jamPelajaran.compareTo(b.jamPelajaran));
+        return list;
+      });
+});
 
 class AktivitasHarianGuru extends ConsumerStatefulWidget {
   const AktivitasHarianGuru({super.key});
@@ -68,17 +68,20 @@ class AktivitasHarianGuru extends ConsumerStatefulWidget {
 }
 
 class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
-  String selectedFilter = 'Semua';
+  String selectedFilter = '🟢 Sedang Berlangsung';
   final List<String> filters = [
-    'Semua',
-    'Sedang Berlangsung',
-    'Akan Datang',
-    'Selesai',
+    '🟢 Sedang Berlangsung',
+    '⏳ Akan Datang',
+    '✅ Selesai',
   ];
+
+  String _cleanFilterText(String filter) {
+    return filter.replaceAll(RegExp(r'[^a-zA-Z ]'), '').trim();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final aktivitasStream = ref.watch(aktivitasGuruProvider(selectedFilter));
+    final aktivitasStream = ref.watch(aktivitasGuruProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
@@ -87,12 +90,13 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
         elevation: 0,
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
+
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilterChip(
               label: Text(
-                selectedFilter,
+                _cleanFilterText(selectedFilter),
                 style: const TextStyle(color: Colors.black),
               ),
               selected: true,
@@ -114,52 +118,39 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: aktivitasStream.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Terjadi kesalahan: $e')),
-          data:
-              (list) =>
-                  list.isEmpty
-                      ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.event_note,
-                              size: 60,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Tidak ada aktivitas',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            if (selectedFilter != 'Semua')
-                              TextButton(
-                                onPressed:
-                                    () => setState(
-                                      () => selectedFilter = 'Semua',
-                                    ),
-                                child: const Text('Tampilkan Semua'),
-                              ),
-                          ],
-                        ),
-                      )
-                      : RefreshIndicator(
-                        onRefresh: () async {
-                          ref.invalidate(aktivitasGuruProvider(selectedFilter));
-                        },
-                        color: Theme.of(context).colorScheme.primary,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.only(top: 16, bottom: 24),
-                          itemCount: list.length,
-                          separatorBuilder:
-                              (_, __) => const SizedBox(height: 16),
-                          itemBuilder:
-                              (_, i) => _ActivityCard(activity: list[i]),
-                        ),
-                      ),
+          error: (e, _) => Center(child: Text('Error: ${e.toString()}')),
+          data: (list) {
+            final filteredList =
+                list.where((e) => e.statusKegiatan == selectedFilter).toList();
+
+            if (filteredList.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.event_note, size: 60, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Tidak ada aktivitas ${_cleanFilterText(selectedFilter)}',
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async => ref.invalidate(aktivitasGuruProvider),
+              color: Theme.of(context).primaryColor,
+              child: ListView.separated(
+                padding: const EdgeInsets.only(top: 16, bottom: 24),
+                itemCount: filteredList.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                itemBuilder:
+                    (_, index) => _ActivityCard(activity: filteredList[index]),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -191,7 +182,7 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
                 children: [
                   Icon(Icons.circle, size: 12, color: _statusColor(filter)),
                   const SizedBox(width: 12),
-                  Text(filter),
+                  Text(_cleanFilterText(filter)),
                 ],
               ),
             );
@@ -204,9 +195,9 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
   }
 
   Color _statusColor(String status) {
-    if (status.contains('Berlangsung')) return Colors.green;
-    if (status.contains('Datang')) return Colors.orange;
-    if (status.contains('Selesai')) return Colors.blue;
+    if (status.contains('🟢')) return Colors.green;
+    if (status.contains('⏳')) return Colors.orange;
+    if (status.contains('✅')) return Colors.blue;
     return Colors.grey;
   }
 }
@@ -230,7 +221,6 @@ class _ActivityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Baris pertama - Status di pojok kanan atas
             Row(
               children: [
                 const Spacer(),
@@ -240,36 +230,26 @@ class _ActivityCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Color.lerp(
-                      _statusColor(activity.statusKegiatan),
-                      Colors.white,
-                      0.9,
-                    ),
+                    color: _statusColor(activity.statusKegiatan).withAlpha(100),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: _statusColor(activity.statusKegiatan),
                       width: 1,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        activity.statusKegiatan,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    activity.statusKegiatan,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _statusColor(activity.statusKegiatan),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
 
-            // Informasi utama
             _buildInfoRow(
               icon: Icons.class_,
               label: 'Kelas',
@@ -282,8 +262,6 @@ class _ActivityCard extends StatelessWidget {
               value: activity.mataPelajaran,
               color: Colors.purple[700]!,
             ),
-
-            // Hari dan Jam setelah Mata Pelajaran
             _buildInfoRow(
               icon: Icons.calendar_today,
               label: 'Hari',
@@ -296,7 +274,6 @@ class _ActivityCard extends StatelessWidget {
               value: activity.jamPelajaran,
               color: Colors.amber[700]!,
             ),
-
             _buildInfoRow(
               icon: Icons.person,
               label: 'Guru',
@@ -313,7 +290,6 @@ class _ActivityCard extends StatelessWidget {
             const Divider(height: 1),
             const SizedBox(height: 12),
 
-            // Absensi dengan label dan ikon
             Row(
               children: [
                 Icon(Icons.assignment_ind, size: 20, color: Colors.grey[600]),
@@ -329,11 +305,7 @@ class _ActivityCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Color.lerp(
-                      _absenColor(activity.statusAbsensi),
-                      Colors.white,
-                      0.9,
-                    ),
+                    color: _absenColor(activity.statusAbsensi).withAlpha(100),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: _absenColor(activity.statusAbsensi),
@@ -363,8 +335,8 @@ class _ActivityCard extends StatelessWidget {
               ],
             ),
 
-            // Jurnal dengan ikon
-            if (activity.jurnal.isNotEmpty) ...[
+            if (activity.jurnal.isNotEmpty &&
+                activity.jurnal != 'Belum diisi') ...[
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -409,7 +381,7 @@ class _ActivityCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Color.lerp(color, Colors.white, 0.9),
+              color: color.withAlpha(100),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 18, color: color),
@@ -440,25 +412,27 @@ class _ActivityCard extends StatelessWidget {
   }
 
   Color _statusColor(String status) {
-    if (status.contains('Berlangsung')) return Colors.green;
-    if (status.contains('Datang')) return Colors.orange;
-    if (status.contains('Selesai')) return Colors.blue;
+    if (status.contains('🟢')) return Colors.green;
+    if (status.contains('⏳')) return Colors.orange;
+    if (status.contains('✅')) return Colors.blue;
     return Colors.grey;
   }
 
   Color _absenColor(String status) {
-    if (status.contains('Hadir')) return Colors.green;
-    if (status.contains('Terlambat')) return Colors.orange;
-    if (status.contains('Alpa')) return Colors.red;
-    if (status.contains('Izin')) return Colors.blue;
+    if (status.contains('✅')) return Colors.green;
+    if (status.contains('⚠️')) return Colors.orange;
+    if (status.contains('❌')) return Colors.red;
+    if (status.contains('📝')) return Colors.blue;
+    if (status.contains('⏳')) return Colors.grey;
     return Colors.grey;
   }
 
   IconData _absenIcon(String status) {
-    if (status.contains('Hadir')) return Icons.check_circle;
-    if (status.contains('Terlambat')) return Icons.access_time;
-    if (status.contains('Alpa')) return Icons.cancel;
-    if (status.contains('Izin')) return Icons.assignment_ind;
+    if (status.contains('✅')) return Icons.check_circle;
+    if (status.contains('⚠️')) return Icons.access_time;
+    if (status.contains('❌')) return Icons.cancel;
+    if (status.contains('📝')) return Icons.assignment_ind;
+    if (status.contains('⏳')) return Icons.timer;
     return Icons.help_outline;
   }
 }
