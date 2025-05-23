@@ -15,7 +15,8 @@ class AuthChecker extends ConsumerWidget {
     final currentUser = ref.watch(currentUserProvider);
 
     return authState.when(
-      loading: () => const SplashScreen(),
+      loading:
+          () => const SplashScreen(child: SizedBox()), // Provide a dummy child
       error: (error, _) => LoginScreen(error: error.toString()),
       data: (user) {
         final effectiveUser = currentUser ?? user;

@@ -49,9 +49,23 @@ class MadrasahApp extends StatelessWidget {
         useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const AuthCheckerWrapper(),
+      home: const SplashScreenWrapper(),
       debugShowCheckedModeBanner: false,
     );
+  }
+}
+
+class SplashScreenWrapper extends StatefulWidget {
+  const SplashScreenWrapper({super.key});
+
+  @override
+  State<SplashScreenWrapper> createState() => _SplashScreenWrapperState();
+}
+
+class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
+  @override
+  Widget build(BuildContext context) {
+    return const SplashScreen(child: AuthCheckerWrapper());
   }
 }
 
@@ -84,9 +98,6 @@ class _AuthCheckerWrapperState extends ConsumerState<AuthCheckerWrapper> {
     return FutureBuilder<Map<String, dynamic>?>(
       future: _userFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SplashScreen();
-        }
         return const AuthChecker();
       },
     );
