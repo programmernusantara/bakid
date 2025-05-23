@@ -17,7 +17,7 @@ class PerizinanPage extends StatelessWidget {
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
-        elevation: 0.5,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.add, size: 24),

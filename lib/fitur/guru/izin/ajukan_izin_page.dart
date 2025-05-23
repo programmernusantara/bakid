@@ -334,7 +334,7 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        backgroundColor: Theme.of(context).primaryColor,
+                        backgroundColor: Colors.blue,
                         elevation: 0,
                       ),
                       onPressed: _isLoading ? null : _submitIzin,

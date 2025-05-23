@@ -1,22 +1,30 @@
+import 'package:bakid/core/services/auth_service.dart';
 import 'package:bakid/fitur/auth/auth_providers.dart';
+import 'package:bakid/fitur/auth/login_screen.dart';
+import 'package:bakid/fitur/guru/home/components/announcement_card.dart';
+import 'package:bakid/fitur/guru/home/components/empty_state_card.dart';
 import 'package:bakid/fitur/guru/home/components/error_card.dart';
+import 'package:bakid/fitur/guru/home/components/profile_header.dart';
+import 'package:bakid/fitur/guru/home/components/schedule_card.dart';
+import 'package:bakid/fitur/guru/home/components/section_header.dart';
 import 'package:bakid/fitur/guru/jadwal/jadwal_providers.dart';
 import 'package:bakid/fitur/guru/pengumuman/pengumuman_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-import 'components/profile_header.dart';
-import 'components/section_header.dart';
-import 'components/schedule_card.dart';
-import 'components/announcement_card.dart';
-import 'components/empty_state_card.dart';
-
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  bool _isLoggingOut = false;
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final profile = user?['profil'] as Map<String, dynamic>?;
     final jadwalAsync = ref.watch(jadwalHariIniProvider);
@@ -25,7 +33,7 @@ class HomePage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Home',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
@@ -33,17 +41,16 @@ class HomePage extends ConsumerWidget {
         elevation: 0,
         backgroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: Badge(
-              // You can add notification count here if needed
-              // label: Text('3'),
-              child: const Icon(Iconsax.notification),
+          if (_isLoggingOut)
+            const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            IconButton(
+              icon: const Icon(Iconsax.logout),
+              onPressed: _handleLogout,
             ),
-            onPressed: () {
-              // Navigate to notification page
-              Navigator.pushNamed(context, '/notifications');
-            },
-          ),
         ],
       ),
       body: SafeArea(
@@ -54,18 +61,16 @@ class HomePage extends ConsumerWidget {
             children: [
               ProfileHeader(profile: profile, user: user),
               const SizedBox(height: 24),
-
               const SectionHeader(
                 title: 'Jadwal Hari Ini',
-                icon: Iconsax.calendar, // Updated icon
+                icon: Iconsax.calendar,
               ),
               const SizedBox(height: 12),
               _ScheduleSection(jadwalAsync: jadwalAsync),
               const SizedBox(height: 24),
-
               const SectionHeader(
                 title: 'Pengumuman Terkini',
-                icon: Iconsax.notification_bing, // Updated icon
+                icon: Iconsax.notification_bing,
               ),
               const SizedBox(height: 12),
               _AnnouncementSection(pengumumanAsync: pengumumanAsync),
@@ -74,6 +79,54 @@ class HomePage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Konfirmasi Logout'),
+            content: const Text('Apakah Anda yakin ingin keluar?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Keluar'),
+              ),
+            ],
+          ),
+    );
+
+    if (shouldLogout != true || !mounted) return;
+
+    setState(() => _isLoggingOut = true);
+
+    try {
+      await ref.read(authServiceProvider).logout();
+      ref.read(currentUserProvider.notifier).state = null;
+
+      if (!mounted) return;
+
+      // Gunakan ini:
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal logout: ${e.toString()}')));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoggingOut = false);
+      }
+    }
   }
 }
 
@@ -88,7 +141,7 @@ class _ScheduleSection extends ConsumerWidget {
       data: (jadwalList) {
         if (jadwalList.isEmpty) {
           return const EmptyStateCard(
-            icon: Iconsax.calendar_remove, // Updated icon
+            icon: Iconsax.calendar_remove,
             message: 'Tidak ada jadwal mengajar hari ini',
           );
         }
@@ -124,7 +177,7 @@ class _AnnouncementSection extends ConsumerWidget {
       data: (pengumumanList) {
         if (pengumumanList.isEmpty) {
           return const EmptyStateCard(
-            icon: Iconsax.note_remove, // Updated icon
+            icon: Iconsax.note_remove,
             message: 'Tidak ada pengumuman saat ini',
           );
         }
