@@ -180,7 +180,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.white,
       body: Form(
         key: _formKey,
         child: jadwalAsync.when(

@@ -114,13 +114,6 @@ class JurnalPage extends ConsumerWidget {
               color: theme.colorScheme.onSurface.withAlpha(100),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Klik tombol + untuk menambahkan jurnal baru',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withAlpha(100),
-            ),
-          ),
         ],
       ),
     );

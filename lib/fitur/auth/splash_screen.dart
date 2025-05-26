@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
 
 class SplashScreen extends StatefulWidget {
   final Widget child;
@@ -16,7 +15,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     // Hide splash screen after 3 seconds
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() => _showSplash = false);
       }
@@ -34,15 +33,10 @@ class _SplashScreenState extends State<SplashScreen> {
           // Splash screen overlay
           if (_showSplash)
             Container(
-              color: Colors.white,
+              color: Colors.white, // Background color of splash screen
               child: Center(
-                child: Lottie.asset(
-                  'assets/animations/splash_animation.json', // Update this path to your actual asset path
-                  width: 300,
-                  height: 300,
-                  fit: BoxFit.contain,
-                  repeat: false,
-                  frameRate: FrameRate.max,
+                child: Image.asset(
+                  'assets/logo/bakid.png', // Path to your splash image
                 ),
               ),
             ),

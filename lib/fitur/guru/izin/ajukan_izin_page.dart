@@ -100,7 +100,7 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
-        elevation: 0.5,
+        elevation: 0,
       ),
       body: jadwalFuture.when(
         loading: () => const Center(child: CircularProgressIndicator()),

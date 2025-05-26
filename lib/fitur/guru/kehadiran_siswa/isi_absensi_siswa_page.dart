@@ -222,7 +222,7 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
                                   additionalField: _buildNameField(
                                     controller: _namaIzinController,
                                     label: 'Nama siswa izin',
-                                    hint: 'Contoh: Andi, Budi, Caca',
+                                    hint: 'Opsional (contoh: Andi, Budi, Caca)',
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -239,7 +239,7 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
                                   additionalField: _buildNameField(
                                     controller: _namaAlpaController,
                                     label: 'Nama siswa alpa',
-                                    hint: 'Contoh: Dedi, Eka, Fani',
+                                    hint: 'Opsional (Contoh: Dedi, Eka, Fani)',
                                   ),
                                 ),
                                 const SizedBox(height: 32),

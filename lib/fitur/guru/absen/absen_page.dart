@@ -209,7 +209,6 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
       );
 
       if (mounted) {
-        // Show success notification
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -279,39 +278,72 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_errorMessage.isNotEmpty)
-              _buildStatusCard(_errorMessage, Colors.red[50]!, Colors.red),
+      body: _buildMainContent(theme),
+    );
+  }
 
-            if (_successMessage.isNotEmpty)
-              _buildStatusCard(
-                _successMessage,
-                Colors.green[50]!,
-                Colors.green,
-              ),
+  Widget _buildMainContent(ThemeData theme) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Colors.blue));
+    }
 
-            if (_isLoading)
-              const Center(
-                child: CircularProgressIndicator(color: Colors.blue),
-              ),
-
-            if (!_isLoading && _jadwalHariIni.isEmpty) _buildEmptyScheduleUI(),
-
-            if (_jadwalHariIni.isNotEmpty) ...[
-              _buildScheduleSelection(theme),
-              const SizedBox(height: 24),
-
-              if (_selectedJadwal != null) _buildScheduleDetailsCard(theme),
-
-              const SizedBox(height: 24),
-              _buildAbsenButton(),
-            ],
-          ],
+    if (_errorMessage.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            _errorMessage,
+            style: TextStyle(color: Colors.red[600]),
+            textAlign: TextAlign.center,
+          ),
         ),
+      );
+    }
+
+    if (_jadwalHariIni.isEmpty) {
+      return _buildNoScheduleUI();
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_successMessage.isNotEmpty)
+            _buildStatusCard(_successMessage, Colors.green[50]!, Colors.green),
+
+          _buildScheduleSelection(theme),
+          const SizedBox(height: 24),
+
+          if (_selectedJadwal != null) _buildScheduleDetailsCard(theme),
+
+          const SizedBox(height: 24),
+          _buildAbsenButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoScheduleUI() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.calendar_today_outlined,
+            size: 72,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Tidak ada jadwal mengajar hari ini',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -325,41 +357,6 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: textColor.withAlpha(100)),
-      ),
-      child: Text(
-        message,
-        style: TextStyle(color: textColor),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildEmptyScheduleUI() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(Icons.calendar_today, size: 48, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'Tidak ada jadwal mengajar hari ini',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: _loadJadwalHariIni,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Muat Ulang'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.grey[600],
-              side: BorderSide(color: Colors.grey[300]!),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -627,23 +624,33 @@ class _RiwayatAbsenContentState extends ConsumerState<RiwayatAbsenContent> {
     }
 
     if (_riwayatAbsen.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history, size: 48, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Belum ada riwayat absensi',
-              style: TextStyle(color: Colors.grey[600]),
+      return RefreshIndicator(
+        onRefresh: _loadRiwayatAbsen,
+        color: Colors.blue,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.8,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Belum ada riwayat absensi',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _loadRiwayatAbsen,
+                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                    child: const Text('Muat Ulang'),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: _loadRiwayatAbsen,
-              style: TextButton.styleFrom(foregroundColor: Colors.blue),
-              child: const Text('Muat Ulang'),
-            ),
-          ],
+          ),
         ),
       );
     }
