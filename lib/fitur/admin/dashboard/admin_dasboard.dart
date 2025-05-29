@@ -33,6 +33,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     'Verifikasi Izin',
     'Pengumuman',
     'Manajemen Kelas',
+    'Jadwal Mengajar',
   ];
 
   Future<void> _showLogoutConfirmation(BuildContext context) async {
@@ -165,6 +166,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               selected: selectedIndex == 4,
               onTap: () => _onItemTapped(4),
             ),
+
             const Spacer(),
             const Divider(),
             _DrawerItem(

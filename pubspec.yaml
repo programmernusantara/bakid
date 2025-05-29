@@ -19,6 +19,7 @@ dependencies:
   animations: ^2.0.11
   iconsax: ^0.0.8
   lottie: ^3.3.1
+  lucide_icons: ^0.257.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
