@@ -1,8 +1,6 @@
-// jurnal_form.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:bakid/core/services/auth_service.dart';
 import 'package:bakid/fitur/auth/auth_providers.dart';
 import 'package:bakid/fitur/guru/jurnal/jurnal_providers.dart';
@@ -22,9 +20,9 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
   final _kendalaController = TextEditingController();
   final _solusiController = TextEditingController();
 
-  Map<String, dynamic>? _selectedJadwal;
   bool _isLoading = false;
-  bool _isJurnalExist = false;
+  String _errorMessage = '';
+  String _successMessage = '';
 
   @override
   void initState() {
@@ -34,7 +32,6 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
           widget.jurnalToEdit!['materi_yang_dipelajari'] ?? '';
       _kendalaController.text = widget.jurnalToEdit!['kendala'] ?? '';
       _solusiController.text = widget.jurnalToEdit!['solusi'] ?? '';
-      _selectedJadwal = widget.jurnalToEdit!['jadwal_mengajar'];
     }
   }
 
@@ -46,65 +43,52 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     super.dispose();
   }
 
-  Future<void> _checkExistingJurnal() async {
-    if (_selectedJadwal == null || !mounted) return;
-
-    final user = ref.read(currentUserProvider);
-    final guruId = user?['profil']?['id'];
-    final today = DateTime.now().toIso8601String().split('T')[0];
-
-    final existingJurnal = await ref.read(
-      jurnalHariIniByJadwalProvider({
-        'guruId': guruId,
-        'jadwalId': _selectedJadwal!['id'],
-        'tanggal': today,
-      }).future,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _isJurnalExist =
-          existingJurnal != null &&
-          (widget.jurnalToEdit == null ||
-              existingJurnal['id'] != widget.jurnalToEdit!['id']);
-    });
-  }
-
-  Future<void> _submit() async {
+  Future<void> _submitJurnal(Map<String, dynamic>? selectedJadwal) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedJadwal == null) {
-      _showNotification('Pilih jadwal mengajar terlebih dahulu', isError: true);
-      return;
-    }
-
-    if (_isJurnalExist) {
-      _showNotification(
-        'Sudah ada jurnal untuk jadwal ini hari ini',
-        isError: true,
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    setState(() => _isLoading = true);
+    if (selectedJadwal == null) return;
 
     final user = ref.read(currentUserProvider);
-    final guruId = user?['profil']?['id'];
-    final supabase = ref.read(supabaseProvider);
-    final today = DateTime.now().toIso8601String().split('T')[0];
+    if (user == null || user['profil'] == null) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+      _successMessage = '';
+    });
 
     try {
+      final supabase = ref.read(supabaseProvider);
+      final currentDate = DateTime.now();
+
+      // Cek apakah jurnal sudah ada untuk jadwal ini hari ini
+      final existing =
+          await supabase
+              .from('jurnal_mengajar')
+              .select()
+              .eq('jadwal_id', selectedJadwal['id'])
+              .eq('tanggal', DateFormat('yyyy-MM-dd').format(currentDate))
+              .maybeSingle();
+
+      if (existing != null &&
+          (widget.jurnalToEdit == null ||
+              existing['id'] != widget.jurnalToEdit!['id'])) {
+        throw 'Anda sudah membuat jurnal untuk kelas ini hari ini';
+      }
+
       if (widget.jurnalToEdit == null) {
+        // Buat jurnal baru
         await supabase.from('jurnal_mengajar').insert({
-          'guru_id': guruId,
-          'jadwal_id': _selectedJadwal!['id'],
-          'tanggal': today,
+          'guru_id': user['profil']['id'],
+          'jadwal_id': selectedJadwal['id'],
+          'kelas_id': selectedJadwal['kelas_id'],
+          'tanggal': DateFormat('yyyy-MM-dd').format(currentDate),
           'materi_yang_dipelajari': _materiController.text,
           'kendala': _kendalaController.text,
           'solusi': _solusiController.text,
         });
-        if (mounted) _showNotification('Jurnal berhasil dibuat');
+        setState(() => _successMessage = 'Jurnal berhasil disimpan');
       } else {
+        // Update jurnal yang sudah ada
         await supabase
             .from('jurnal_mengajar')
             .update({
@@ -114,321 +98,157 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
               'diperbarui_pada': DateTime.now().toIso8601String(),
             })
             .eq('id', widget.jurnalToEdit!['id']);
-        if (mounted) _showNotification('Jurnal berhasil diperbarui');
+        setState(() => _successMessage = 'Jurnal berhasil diperbarui');
       }
 
-      if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ref.invalidate(jurnalProvider(guruId));
+      // Reset form jika membuat baru
+      if (widget.jurnalToEdit == null) {
+        _formKey.currentState?.reset();
+        _materiController.clear();
+        _kendalaController.clear();
+        _solusiController.clear();
+      }
     } catch (e) {
-      if (mounted) {
-        _showNotification('Gagal menyimpan: ${e.toString()}', isError: true);
-      }
+      setState(() => _errorMessage = 'Error: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() => _isLoading = false);
     }
-  }
-
-  void _showNotification(String message, {bool isError = false}) {
-    if (!mounted) return;
-
-    final scaffold = ScaffoldMessenger.of(context);
-    scaffold.hideCurrentSnackBar();
-    scaffold.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red[600] : Colors.green[600],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final user = ref.watch(currentUserProvider);
-    final guruId = user?['profil']?['id'] as String?;
-    final today = DateTime.now();
-    final currentDay = today.weekday;
-
-    if (guruId == null) {
-      return Scaffold(
-        body: Center(
-          child: Text(
-            'Guru ID tidak ditemukan',
-            style: theme.textTheme.bodyMedium,
-          ),
-        ),
-      );
-    }
-
-    final jadwalAsync = ref.watch(jadwalGuruProvider(guruId));
+    final _ = Theme.of(context);
+    final currentDate = DateTime.now();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           widget.jurnalToEdit == null ? 'Buat Jurnal' : 'Edit Jurnal',
         ),
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
         ),
+        elevation: 0,
       ),
-      backgroundColor: Colors.white,
-      body: Form(
-        key: _formKey,
-        child: jadwalAsync.when(
-          loading:
-              () => Center(
-                child: CircularProgressIndicator(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-          error:
-              (error, stack) => Center(
-                child: Text(
-                  'Error: $error',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ),
-          data: (jadwalList) {
-            final jadwalHariIni =
-                jadwalList
-                    .where(
-                      (jadwal) => jadwal['hari_dalam_minggu'] == currentDay,
-                    )
-                    .toList();
+      body: SafeArea(
+        child: Consumer(
+          builder: (context, ref, _) {
+            final jadwal = ref.watch(jurnalJadwalProvider);
 
-            if (jadwalHariIni.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Iconsax.calendar_remove,
-                      size: 48,
-                      color: theme.colorScheme.onSurface.withAlpha(100),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Tidak ada jadwal mengajar hari ini',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withAlpha(100),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            if (_selectedJadwal == null ||
-                !jadwalHariIni.any((j) => j['id'] == _selectedJadwal!['id'])) {
-              _selectedJadwal = jadwalHariIni.first;
-            }
-
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _checkExistingJurnal();
-              }
-            });
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Date Card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest
-                          .withAlpha(100),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
+            return jadwal.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(child: Text('Error: $error')),
+              data: (data) {
+                if (data.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Iconsax.calendar_1,
-                          color: theme.colorScheme.primary,
+                          Icons.calendar_today_rounded,
+                          size: 48,
+                          color: Colors.grey[400],
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(height: 16),
                         Text(
-                          DateFormat('EEEE, d MMMM y', 'id').format(today),
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
+                          'Tidak ada jadwal mengajar hari ini',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                  );
+                }
 
-                  // Schedule Selection
-                  Column(
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Jadwal Mengajar',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                      // Header Section
+                      _buildHeaderSection(currentDate),
+                      const SizedBox(height: 24),
+
+                      // Status messages
+                      if (_errorMessage.isNotEmpty)
+                        _buildStatusMessage(
+                          _errorMessage,
+                          Icons.error_outline_rounded,
+                          Colors.red,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<Map<String, dynamic>>(
-                        value: _selectedJadwal,
-                        decoration: InputDecoration(
-                          labelText: 'Pilih Jadwal',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: theme.colorScheme.outline.withAlpha(100),
+                      if (_successMessage.isNotEmpty)
+                        _buildStatusMessage(
+                          _successMessage,
+                          Icons.check_circle_outline_rounded,
+                          Colors.green,
+                        ),
+                      const SizedBox(height: 16),
+
+                      // Schedule Dropdown
+                      _buildJadwalDropdown(data),
+                      const SizedBox(height: 24),
+
+                      // Form Section
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final selectedJadwal = ref.watch(
+                            jurnalSelectedJadwalProvider,
+                          );
+                          return Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Materi Section
+                                _buildSectionTitle('Materi yang Diajarkan'),
+                                const SizedBox(height: 16),
+                                _buildInputField(
+                                  controller: _materiController,
+                                  label: 'Materi yang diajarkan',
+                                  hint: 'Masukkan materi yang diajarkan',
+                                  maxLines: 4,
+                                  isRequired: true,
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Kendala Section
+                                _buildSectionTitle('Kendala'),
+                                const SizedBox(height: 16),
+                                _buildInputField(
+                                  controller: _kendalaController,
+                                  label: 'Kendala yang dihadapi',
+                                  hint: 'Masukkan kendala yang dihadapi',
+                                  maxLines: 3,
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Solusi Section
+                                _buildSectionTitle('Solusi'),
+                                const SizedBox(height: 16),
+                                _buildInputField(
+                                  controller: _solusiController,
+                                  label: 'Solusi yang dilakukan',
+                                  hint: 'Masukkan solusi yang dilakukan',
+                                  maxLines: 3,
+                                ),
+                                const SizedBox(height: 32),
+
+                                // Submit Button
+                                _buildSubmitButton(selectedJadwal),
+                              ],
                             ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          filled: true,
-                          fillColor: theme.colorScheme.surfaceContainerHighest,
-                        ),
-                        items:
-                            jadwalHariIni.map((jadwal) {
-                              final mp = jadwal['mata_pelajaran'] ?? {};
-                              final kelas = jadwal['kelas'] ?? {};
-                              return DropdownMenuItem<Map<String, dynamic>>(
-                                value: jadwal,
-                                key: ValueKey(jadwal['id']),
-                                child: Text(
-                                  '${mp['nama']} - ${kelas['nama']} (${jadwal['waktu_mulai']}-${jadwal['waktu_selesai']}',
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                              );
-                            }).toList(),
-                        onChanged: (value) {
-                          if (value != null && mounted) {
-                            setState(() {
-                              _selectedJadwal = value;
-                              _checkExistingJurnal();
-                            });
-                          }
+                          );
                         },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Pilih jadwal terlebih dahulu';
-                          }
-                          return null;
-                        },
-                        style: theme.textTheme.bodyMedium,
                       ),
-                      if (_isJurnalExist)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Iconsax.info_circle,
-                                size: 18,
-                                color: theme.colorScheme.error,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Sudah ada jurnal untuk jadwal ini',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.error,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-
-                  // Form Inputs
-                  _buildInputSection(
-                    icon: Iconsax.document_text,
-                    title: 'Materi yang Diajarkan',
-                    hint:
-                        'Masukkan materi yang diajarkan (من ... إلى / dari ... sampai)',
-                    controller: _materiController,
-                    maxLines: 4,
-                    isRequired: true,
-                    theme: theme,
-                  ),
-                  const SizedBox(height: 20),
-
-                  _buildInputSection(
-                    icon: Iconsax.warning_2,
-                    title: 'Kendala',
-                    hint: 'Masukkan kendala yang dihadapi',
-                    controller: _kendalaController,
-                    maxLines: 3,
-                    theme: theme,
-                  ),
-                  const SizedBox(height: 20),
-
-                  _buildInputSection(
-                    icon: Iconsax.lamp_charge,
-                    title: 'Solusi',
-                    hint: 'Masukkan solusi yang dilakukan',
-                    controller: _solusiController,
-                    maxLines: 3,
-                    theme: theme,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Submit Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor:
-                            Colors.blue[600], // Warna biru yang lebih soft
-                        foregroundColor: Colors.white, // Warna teks putih
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            8,
-                          ), // Border radius lebih kecil
-                        ),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ), // Padding horizontal
-                      ),
-                      onPressed: _isLoading ? null : _submit,
-                      child:
-                          _isLoading
-                              ? SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color:
-                                      Colors
-                                          .white, // Warna loading indicator putih
-                                ),
-                              )
-                              : Text(
-                                'SIMPAN JURNAL',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing:
-                                      0.5, // Sedikit letter spacing untuk keterbacaan
-                                ),
-                              ),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           },
         ),
@@ -436,58 +256,187 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     );
   }
 
-  Widget _buildInputSection({
-    required IconData icon,
-    required String title,
-    required String hint,
-    required TextEditingController controller,
-    required int maxLines,
-    required ThemeData theme,
-    bool isRequired = false,
-  }) {
+  Widget _buildHeaderSection(DateTime date) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(icon, size: 20, color: theme.colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: theme.colorScheme.outline.withAlpha(100),
-              ),
-            ),
-            contentPadding: const EdgeInsets.all(16),
-            filled: true,
-            fillColor: theme.colorScheme.surfaceContainerHighest,
+        Text(
+          'Hari Ini',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
           ),
-          maxLines: maxLines,
-          validator:
-              isRequired
-                  ? (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Field ini wajib diisi';
-                    }
-                    return null;
-                  }
-                  : null,
-          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusMessage(String message, IconData icon, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withAlpha(100),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 24, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildJadwalDropdown(List<Map<String, dynamic>> jadwalList) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final selectedJadwal = ref.watch(jurnalSelectedJadwalProvider);
+        final selected = selectedJadwal ?? jadwalList.first;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('Jadwal Mengajar'),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<Map<String, dynamic>>(
+              value: selected,
+              decoration: InputDecoration(
+                labelText: 'Pilih Jadwal',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+              ),
+              items:
+                  jadwalList.map((jadwal) {
+                    final mp = jadwal['mata_pelajaran'] ?? {};
+                    final kelas = jadwal['kelas'] ?? {};
+                    return DropdownMenuItem<Map<String, dynamic>>(
+                      value: jadwal,
+                      child: Text(
+                        '${mp['nama']} - ${kelas['nama']} (${jadwal['waktu_mulai']}-${jadwal['waktu_selesai']})',
+                      ),
+                    );
+                  }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  ref.read(jurnalSelectedJadwalProvider.notifier).state = value;
+                }
+              },
+              validator: (value) {
+                if (value == null) return 'Pilih jadwal terlebih dahulu';
+                return null;
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    int maxLines = 1,
+    bool isRequired = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.all(16),
+      ),
+      maxLines: maxLines,
+      validator:
+          isRequired
+              ? (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Field ini wajib diisi';
+                }
+                return null;
+              }
+              : null,
+    );
+  }
+
+  Widget _buildSubmitButton(Map<String, dynamic>? selectedJadwal) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : () => _submitJurnal(selectedJadwal),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child:
+            _isLoading
+                ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+                : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      widget.jurnalToEdit == null
+                          ? Icons.save_rounded
+                          : Icons.edit_rounded,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.jurnalToEdit == null
+                          ? 'Simpan Jurnal'
+                          : 'Update Jurnal',
+                    ),
+                  ],
+                ),
+      ),
     );
   }
 }

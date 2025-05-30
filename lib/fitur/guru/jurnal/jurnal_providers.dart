@@ -1,10 +1,46 @@
 import 'package:bakid/core/services/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bakid/fitur/auth/auth_providers.dart';
+import 'package:intl/intl.dart';
 
-// Provider untuk daftar jurnal
-final jurnalProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, guruId) async {
+// Provider untuk tanggal jurnal (konsisten dengan absensi)
+final jurnalDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
+
+// Provider untuk jadwal yang dipilih di jurnal (konsisten dengan absensi)
+final jurnalSelectedJadwalProvider = StateProvider<Map<String, dynamic>?>(
+  (ref) => null,
+);
+
+// Provider untuk data jadwal jurnal (disesuaikan dengan pola absensi)
+final jurnalJadwalProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null || user['profil'] == null) return [];
+
+  final selectedDate = ref.watch(jurnalDateProvider);
+  final supabase = ref.watch(supabaseProvider);
+  final hariIni = selectedDate.weekday;
+
+  final data = await supabase
+      .from('jadwal_mengajar')
+      .select('*, kelas:kelas_id(*), mata_pelajaran:mata_pelajaran_id(*)')
+      .eq('guru_id', user['profil']['id'])
+      .eq('hari_dalam_minggu', hariIni)
+      .eq('aktif', true)
+      .order('waktu_mulai');
+
+  return List<Map<String, dynamic>>.from(data);
+});
+
+// Provider untuk daftar jurnal (dioptimalkan)
+final jurnalListProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      final user = ref.watch(currentUserProvider);
+      if (user == null || user['profil'] == null) return [];
+
       final supabase = ref.watch(supabaseProvider);
+
       final response = await supabase
           .from('jurnal_mengajar')
           .select('''
@@ -15,35 +51,19 @@ final jurnalProvider = FutureProvider.autoDispose
           kelas:kelas_id (*)
         )
       ''')
-          .eq('guru_id', guruId)
+          .eq('guru_id', user['profil']['id'])
           .order('tanggal', ascending: false);
+
       return response;
     });
 
-// Provider untuk jadwal guru
-final jadwalGuruProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, guruId) async {
-      final supabase = ref.watch(supabaseProvider);
-      final response = await supabase
-          .from('jadwal_mengajar')
-          .select('''
-        *,
-        mata_pelajaran:mata_pelajaran_id(*),
-        kelas:kelas_id(*)
-      ''')
-          .eq('guru_id', guruId)
-          .eq('aktif', true)
-          .order('hari_dalam_minggu', ascending: true)
-          .order('waktu_mulai', ascending: true);
-      return response;
-    });
+// Provider untuk cek jurnal yang sudah ada (disederhanakan)
+final existingJurnalProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>?, String>((ref, jadwalId) async {
+      final user = ref.watch(currentUserProvider);
+      if (user == null || user['profil'] == null) return null;
 
-// Provider untuk cek jurnal yang sudah ada
-final jurnalHariIniByJadwalProvider = FutureProvider.autoDispose
-    .family<Map<String, dynamic>?, Map<String, dynamic>>((ref, params) async {
-      final guruId = params['guruId'];
-      final jadwalId = params['jadwalId'];
-      final tanggal = params['tanggal'];
+      final tanggal = ref.watch(jurnalDateProvider);
       final supabase = ref.watch(supabaseProvider);
 
       final response =
@@ -51,15 +71,12 @@ final jurnalHariIniByJadwalProvider = FutureProvider.autoDispose
               .from('jurnal_mengajar')
               .select('''
         *,
-        jadwal_mengajar:jadwal_id (
-          *,
-          mata_pelajaran:mata_pelajaran_id (*),
-          kelas:kelas_id (*)
-        )
+        jadwal_mengajar:jadwal_id (*)
       ''')
-              .eq('guru_id', guruId)
+              .eq('guru_id', user['profil']['id'])
               .eq('jadwal_id', jadwalId)
-              .eq('tanggal', tanggal)
+              .eq('tanggal', DateFormat('yyyy-MM-dd').format(tanggal))
               .maybeSingle();
+
       return response;
     });

@@ -49,20 +49,19 @@ class JurnalPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: _buildJurnalHistoryTab(context, ref, guruId, theme),
+      body: _buildJurnalHistoryTab(context, ref, theme),
     );
   }
 
   Widget _buildJurnalHistoryTab(
     BuildContext context,
     WidgetRef ref,
-    String guruId,
     ThemeData theme,
   ) {
-    final jurnalAsync = ref.watch(jurnalProvider(guruId));
+    final jurnalAsync = ref.watch(jurnalListProvider);
 
     return RefreshIndicator(
-      onRefresh: () => ref.refresh(jurnalProvider(guruId).future),
+      onRefresh: () => ref.refresh(jurnalListProvider.future),
       child: jurnalAsync.when(
         loading:
             () => Center(
