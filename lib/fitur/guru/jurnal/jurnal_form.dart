@@ -16,7 +16,8 @@ class JurnalForm extends ConsumerStatefulWidget {
 
 class _JurnalFormState extends ConsumerState<JurnalForm> {
   final _formKey = GlobalKey<FormState>();
-  final _materiController = TextEditingController();
+  final _materiAwalController = TextEditingController();
+  final _materiAkhirController = TextEditingController();
   final _kendalaController = TextEditingController();
   final _solusiController = TextEditingController();
 
@@ -28,8 +29,15 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
   void initState() {
     super.initState();
     if (widget.jurnalToEdit != null) {
-      _materiController.text =
-          widget.jurnalToEdit!['materi_yang_dipelajari'] ?? '';
+      final materi = widget.jurnalToEdit!['materi_yang_dipelajari'] ?? '';
+      // Split existing materi into two parts if contains separator
+      if (materi.contains('||')) {
+        final parts = materi.split('||');
+        _materiAwalController.text = parts[0].trim();
+        _materiAkhirController.text = parts[1].trim();
+      } else {
+        _materiAwalController.text = materi;
+      }
       _kendalaController.text = widget.jurnalToEdit!['kendala'] ?? '';
       _solusiController.text = widget.jurnalToEdit!['solusi'] ?? '';
     }
@@ -37,7 +45,8 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
 
   @override
   void dispose() {
-    _materiController.dispose();
+    _materiAwalController.dispose();
+    _materiAkhirController.dispose();
     _kendalaController.dispose();
     _solusiController.dispose();
     super.dispose();
@@ -60,7 +69,11 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
       final supabase = ref.read(supabaseProvider);
       final currentDate = DateTime.now();
 
-      // Cek apakah jurnal sudah ada untuk jadwal ini hari ini
+      // Combine materi awal and akhir with separator
+      final combinedMateri =
+          '${_materiAwalController.text.trim()} || ${_materiAkhirController.text.trim()}';
+
+      // Check for existing jurnal
       final existing =
           await supabase
               .from('jurnal_mengajar')
@@ -76,23 +89,23 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
       }
 
       if (widget.jurnalToEdit == null) {
-        // Buat jurnal baru
+        // Create new jurnal
         await supabase.from('jurnal_mengajar').insert({
           'guru_id': user['profil']['id'],
           'jadwal_id': selectedJadwal['id'],
           'kelas_id': selectedJadwal['kelas_id'],
           'tanggal': DateFormat('yyyy-MM-dd').format(currentDate),
-          'materi_yang_dipelajari': _materiController.text,
+          'materi_yang_dipelajari': combinedMateri,
           'kendala': _kendalaController.text,
           'solusi': _solusiController.text,
         });
         setState(() => _successMessage = 'Jurnal berhasil disimpan');
       } else {
-        // Update jurnal yang sudah ada
+        // Update existing jurnal
         await supabase
             .from('jurnal_mengajar')
             .update({
-              'materi_yang_dipelajari': _materiController.text,
+              'materi_yang_dipelajari': combinedMateri,
               'kendala': _kendalaController.text,
               'solusi': _solusiController.text,
               'diperbarui_pada': DateTime.now().toIso8601String(),
@@ -101,10 +114,10 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
         setState(() => _successMessage = 'Jurnal berhasil diperbarui');
       }
 
-      // Reset form jika membuat baru
       if (widget.jurnalToEdit == null) {
         _formKey.currentState?.reset();
-        _materiController.clear();
+        _materiAwalController.clear();
+        _materiAkhirController.clear();
         _kendalaController.clear();
         _solusiController.clear();
       }
@@ -117,7 +130,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
 
   @override
   Widget build(BuildContext context) {
-    final _ = Theme.of(context);
+    final theme = Theme.of(context);
     final currentDate = DateTime.now();
 
     return Scaffold(
@@ -125,6 +138,9 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
       appBar: AppBar(
         title: Text(
           widget.jurnalToEdit == null ? 'Buat Jurnal' : 'Edit Jurnal',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -205,34 +221,53 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Materi Section
-                                _buildSectionTitle('Materi yang Diajarkan'),
-                                const SizedBox(height: 16),
+                                _buildSectionTitle('Materi Pembelajaran'),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Awal Materi',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
                                 _buildInputField(
-                                  controller: _materiController,
-                                  label: 'Materi yang diajarkan',
-                                  hint: 'Masukkan materi yang diajarkan',
-                                  maxLines: 4,
+                                  controller: _materiAwalController,
+                                  hint: 'Masukkan materi awal pembelajaran',
+                                  maxLines: 3,
                                   isRequired: true,
                                 ),
                                 const SizedBox(height: 16),
+                                Text(
+                                  'Akhir Materi',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInputField(
+                                  controller: _materiAkhirController,
+                                  hint: 'Masukkan materi akhir pembelajaran',
+                                  maxLines: 3,
+                                ),
+                                const SizedBox(height: 24),
 
                                 // Kendala Section
-                                _buildSectionTitle('Kendala'),
-                                const SizedBox(height: 16),
+                                _buildSectionTitle('Kendala Pembelajaran'),
+                                const SizedBox(height: 12),
                                 _buildInputField(
                                   controller: _kendalaController,
-                                  label: 'Kendala yang dihadapi',
                                   hint: 'Masukkan kendala yang dihadapi',
                                   maxLines: 3,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 24),
 
                                 // Solusi Section
-                                _buildSectionTitle('Solusi'),
-                                const SizedBox(height: 16),
+                                _buildSectionTitle('Solusi Kendala'),
+                                const SizedBox(height: 12),
                                 _buildInputField(
                                   controller: _solusiController,
-                                  label: 'Solusi yang dilakukan',
                                   hint: 'Masukkan solusi yang dilakukan',
                                   maxLines: 3,
                                 ),
@@ -286,8 +321,9 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withAlpha(100),
+        color: color.withAlpha(20),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withAlpha(100)),
       ),
       child: Row(
         children: [
@@ -350,6 +386,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                       value: jadwal,
                       child: Text(
                         '${mp['nama']} - ${kelas['nama']} (${jadwal['waktu_mulai']}-${jadwal['waktu_selesai']})',
+                        style: const TextStyle(fontSize: 14),
                       ),
                     );
                   }).toList(),
@@ -371,7 +408,6 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
 
   Widget _buildInputField({
     required TextEditingController controller,
-    required String label,
     required String hint,
     int maxLines = 1,
     bool isRequired = false,
@@ -379,9 +415,17 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
-        labelText: label,
         hintText: hint,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
         contentPadding: const EdgeInsets.all(16),
       ),
       maxLines: maxLines,
@@ -407,7 +451,9 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         child:
             _isLoading
@@ -433,6 +479,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                       widget.jurnalToEdit == null
                           ? 'Simpan Jurnal'
                           : 'Update Jurnal',
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ],
                 ),

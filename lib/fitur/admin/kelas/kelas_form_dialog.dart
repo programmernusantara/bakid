@@ -60,7 +60,7 @@ class _KelasFormDialogState extends ConsumerState<KelasFormDialog> {
               controller: _namaController,
               decoration: const InputDecoration(
                 labelText: 'Nama Kelas',
-                hintText: 'X IPA 1',
+                hintText: 'IV A MID ',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {

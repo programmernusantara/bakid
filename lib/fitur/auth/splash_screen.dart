@@ -14,7 +14,6 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Hide splash screen after 3 seconds
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() => _showSplash = false);
@@ -33,10 +32,22 @@ class _SplashScreenState extends State<SplashScreen> {
           // Splash screen overlay
           if (_showSplash)
             Container(
-              color: Colors.white, // Background color of splash screen
+              color: const Color(0xFFE8F5E9), // Light green background
               child: Center(
-                child: Image.asset(
-                  'assets/logo/bakid.png', // Path to your splash image
+                child: Container(
+                  width: 200, // Medium size
+                  height: 200,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Image.asset(
+                      'assets/logo/bakid.png', // Your logo path
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -61,7 +61,7 @@ class _MataPelajaranFormDialogState
               controller: _namaController,
               decoration: const InputDecoration(
                 labelText: 'Nama Mata Pelajaran',
-                hintText: 'Matematika',
+                hintText: 'Fathul Al_Qorib',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {

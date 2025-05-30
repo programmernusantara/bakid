@@ -20,27 +20,25 @@ class AnnouncementCard extends StatelessWidget {
       context: context,
       builder:
           (_) => Dialog(
-            backgroundColor: Colors.black,
-            insetPadding: EdgeInsets.zero,
-            child: Stack(
-              children: [
-                InteractiveViewer(
-                  child: Center(
-                    child: Image.network(imageUrl, fit: BoxFit.contain),
-                  ),
-                ),
-                Positioned(
-                  top: 40,
-                  right: 20,
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: const CircleAvatar(
-                      backgroundColor: Colors.black54,
-                      child: Icon(Icons.close, color: Colors.white),
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 3.0,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                errorBuilder:
+                    (context, error, stackTrace) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 50,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
     );

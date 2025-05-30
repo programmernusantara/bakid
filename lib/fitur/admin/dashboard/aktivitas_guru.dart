@@ -38,7 +38,7 @@ class AktivitasGuru {
       hari: map['hari']?.toString() ?? '',
       statusAbsensi: map['status_absensi']?.toString() ?? '',
       statusKegiatan: map['status_kegiatan']?.toString() ?? '',
-      jurnal: map['jurnal']?.toString() ?? 'Belum diisi',
+      jurnal: map['jurnal']?.toString() ?? '',
     );
   }
 }
@@ -65,16 +65,8 @@ class AktivitasHarianGuru extends ConsumerStatefulWidget {
 }
 
 class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
-  String selectedFilter = '🟢 Sedang Berlangsung';
-  final List<String> filters = [
-    '🟢 Sedang Berlangsung',
-    '⏳ Akan Datang',
-    '✅ Selesai',
-  ];
-
-  String _cleanFilterText(String filter) {
-    return filter.replaceAll(RegExp(r'[^a-zA-Z ]'), '').trim();
-  }
+  String selectedFilter = 'Sedang Berlangsung';
+  final List<String> filters = ['Sedang Berlangsung', 'Akan Datang', 'Selesai'];
 
   @override
   Widget build(BuildContext context) {
@@ -85,9 +77,31 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list, color: Colors.black87),
-            onPressed: () => _showFilterMenu(context),
+            onSelected: (value) {
+              setState(() => selectedFilter = value);
+            },
+            itemBuilder: (context) {
+              return ['Sedang Berlangsung', 'Akan Datang', 'Selesai']
+                  .map(
+                    (filter) => PopupMenuItem<String>(
+                      value: filter,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: 12,
+                            color: _statusColor(filter),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(filter),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList();
+            },
           ),
         ],
       ),
@@ -98,7 +112,9 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
           error: (e, _) => Center(child: Text('Error: ${e.toString()}')),
           data: (list) {
             final filteredList =
-                list.where((e) => e.statusKegiatan == selectedFilter).toList();
+                list.where((e) {
+                  return _getStatusText(e.statusKegiatan) == selectedFilter;
+                }).toList();
 
             if (filteredList.isEmpty) {
               return Center(
@@ -108,7 +124,7 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
                     const Icon(Icons.event_note, size: 60, color: Colors.grey),
                     const SizedBox(height: 16),
                     Text(
-                      'Tidak ada aktivitas ${_cleanFilterText(selectedFilter)}',
+                      'Tidak ada aktivitas $selectedFilter',
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   ],
@@ -133,49 +149,18 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
     );
   }
 
-  void _showFilterMenu(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-    final RelativeRect position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(
-          button.size.bottomRight(Offset.zero),
-          ancestor: overlay,
-        ),
-      ),
-      Offset.zero & overlay.size,
-    );
-
-    showMenu<String>(
-      context: context,
-      position: position,
-      items:
-          filters.map((filter) {
-            return PopupMenuItem<String>(
-              value: filter,
-              child: Row(
-                children: [
-                  Icon(Icons.circle, size: 12, color: _statusColor(filter)),
-                  const SizedBox(width: 12),
-                  Text(_cleanFilterText(filter)),
-                ],
-              ),
-            );
-          }).toList(),
-    ).then((value) {
-      if (value != null) {
-        setState(() => selectedFilter = value);
-      }
-    });
+  Color _statusColor(String status) {
+    if (status == 'Sedang Berlangsung') return Colors.green;
+    if (status == 'Akan Datang') return Colors.orange;
+    if (status == 'Selesai') return Colors.blue;
+    return Colors.grey;
   }
 
-  Color _statusColor(String status) {
-    if (status.contains('🟢')) return Colors.green;
-    if (status.contains('⏳')) return Colors.orange;
-    if (status.contains('✅')) return Colors.blue;
-    return Colors.grey;
+  String _getStatusText(String status) {
+    if (status.contains('🟢')) return 'Berlangsung';
+    if (status.contains('⏳')) return 'Akan Datang';
+    if (status.contains('✅')) return 'Selesai';
+    return status;
   }
 }
 
@@ -201,26 +186,21 @@ class _ActivityCard extends StatelessWidget {
             Row(
               children: [
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _statusColor(activity.statusKegiatan).withAlpha(100),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _statusColor(activity.statusKegiatan),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
+                Chip(
+                  backgroundColor: _statusColor(
                     activity.statusKegiatan,
+                  ).withAlpha(50),
+                  label: Text(
+                    _getStatusText(activity.statusKegiatan),
                     style: TextStyle(
-                      fontSize: 12,
                       color: _statusColor(activity.statusKegiatan),
-                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
+                  ),
+                  avatar: Icon(
+                    Icons.circle,
+                    size: 12,
+                    color: _statusColor(activity.statusKegiatan),
                   ),
                 ),
               ],
@@ -267,6 +247,7 @@ class _ActivityCard extends StatelessWidget {
             const Divider(height: 1),
             const SizedBox(height: 12),
 
+            // Absensi
             Row(
               children: [
                 Icon(Icons.assignment_ind, size: 20, color: Colors.grey[600]),
@@ -276,55 +257,61 @@ class _ActivityCard extends StatelessWidget {
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _absenColor(activity.statusAbsensi).withAlpha(100),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
+                Chip(
+                  backgroundColor: _absenColor(
+                    activity.statusAbsensi,
+                  ).withAlpha(50),
+                  label: Text(
+                    activity.statusAbsensi,
+                    style: TextStyle(
                       color: _absenColor(activity.statusAbsensi),
-                      width: 1,
+                      fontSize: 12,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _absenIcon(activity.statusAbsensi),
-                        size: 16,
-                        color: _absenColor(activity.statusAbsensi),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        activity.statusAbsensi,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _absenColor(activity.statusAbsensi),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  avatar: Icon(
+                    _absenIcon(activity.statusAbsensi),
+                    size: 16,
+                    color: _absenColor(activity.statusAbsensi),
                   ),
                 ),
               ],
             ),
 
-            if (activity.jurnal.isNotEmpty &&
-                activity.jurnal != 'Belum diisi') ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(Icons.book, size: 20, color: Colors.grey[600]),
+            // Jurnal (selalu ditampilkan)
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(
+                  Icons.book,
+                  size: 20,
+                  color:
+                      activity.jurnal.isEmpty ? Colors.grey : Colors.grey[600],
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Jurnal:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color:
+                        activity.jurnal.isEmpty
+                            ? Colors.grey
+                            : Colors.grey[600],
+                  ),
+                ),
+                if (activity.jurnal.isEmpty) ...[
                   const SizedBox(width: 8),
                   Text(
-                    'Jurnal:',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    'Belum diisi',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
-              ),
+              ],
+            ),
+            if (activity.jurnal.isNotEmpty) ...[
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -386,6 +373,13 @@ class _ActivityCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getStatusText(String status) {
+    if (status.contains('🟢')) return 'Sedang Berlangsung';
+    if (status.contains('⏳')) return 'Akan Datang';
+    if (status.contains('✅')) return 'Selesai';
+    return status;
   }
 
   Color _statusColor(String status) {
