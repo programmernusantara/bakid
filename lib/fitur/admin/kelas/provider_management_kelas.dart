@@ -68,7 +68,7 @@ final guruListProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>(
     final supabase = ref.watch(supabaseClientProvider);
     return supabase
         .from('profil_guru')
-        .select('id, nama_lengkap')
+        .select('id, nama_lengkap, asal_daerah')
         .order('nama_lengkap', ascending: true);
   },
 );

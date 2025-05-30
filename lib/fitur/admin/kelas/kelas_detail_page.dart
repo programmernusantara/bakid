@@ -348,12 +348,29 @@ class _KelasDetailPageState extends ConsumerState<KelasDetailPage>
                                       ),
                                       const SizedBox(width: 6),
                                       Expanded(
-                                        child: Text(
-                                          jadwal['guru']!['nama_lengkap'],
-                                          style: TextStyle(
-                                            color: colors.onSurfaceVariant,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              jadwal['guru']!['nama_lengkap'],
+                                              style: TextStyle(
+                                                color: colors.onSurfaceVariant,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            if (jadwal['guru']?['asal_daerah'] !=
+                                                null)
+                                              Text(
+                                                jadwal['guru']!['asal_daerah'],
+                                                style: TextStyle(
+                                                  color:
+                                                      colors.onSurfaceVariant,
+                                                  fontSize: 12,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                          ],
                                         ),
                                       ),
                                     ],

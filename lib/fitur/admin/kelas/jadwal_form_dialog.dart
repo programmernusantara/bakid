@@ -175,6 +175,7 @@ class _JadwalFormDialogState extends ConsumerState<JadwalFormDialog> {
             const SizedBox(height: 16),
 
             // Guru Dropdown
+            // Guru Dropdown
             guruAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error:
@@ -191,7 +192,9 @@ class _JadwalFormDialogState extends ConsumerState<JadwalFormDialog> {
                       ...guruList.map(
                         (guru) => DropdownMenuItem(
                           value: guru['id'],
-                          child: Text(guru['nama_lengkap']),
+                          child: Text(
+                            '${guru['nama_lengkap']} (${guru['asal_daerah'] ?? '-'})',
+                          ),
                         ),
                       ),
                     ],

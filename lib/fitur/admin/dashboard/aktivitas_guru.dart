@@ -48,12 +48,9 @@ final aktivitasGuruProvider = StreamProvider<List<AktivitasGuru>>((ref) {
   return supabase
       .from('aktivitas_harian_guru_view')
       .stream(primaryKey: ['jadwal_id'])
-      .order('jam_pelajaran') // Menggunakan jam_pelajaran yang tersedia
+      .order('jam_pelajaran')
       .map((data) {
-        // Konversi ke model
         final list = data.map((e) => AktivitasGuru.fromMap(e)).toList();
-
-        // Urutkan secara manual jika diperlukan
         list.sort((a, b) => a.jamPelajaran.compareTo(b.jamPelajaran));
         return list;
       });
@@ -86,31 +83,11 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        centerTitle: true,
-        elevation: 0,
         backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: FilterChip(
-              label: Text(
-                _cleanFilterText(selectedFilter),
-                style: const TextStyle(color: Colors.black),
-              ),
-              selected: true,
-              onSelected: (_) => _showFilterMenu(context),
-              avatar: const Icon(
-                Icons.filter_list,
-                size: 18,
-                color: Colors.black,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              backgroundColor: Colors.grey[200],
-            ),
+          IconButton(
+            icon: const Icon(Icons.filter_list, color: Colors.black87),
+            onPressed: () => _showFilterMenu(context),
           ),
         ],
       ),
