@@ -117,6 +117,10 @@ class _RiwayatIzinPageState extends ConsumerState<RiwayatIzinPage> {
                           const SizedBox(height: 8),
                           TextButton(
                             onPressed: _loadRiwayat,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue,
+                            ),
+
                             child: const Text('Muat Ulang'),
                           ),
                         ],

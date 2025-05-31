@@ -20,7 +20,7 @@ class _AbsenTabPageState extends ConsumerState<AbsenTabPage> {
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text("Kehadiran Guru"),
+        title: const Text("Guru"),
         centerTitle: true,
         elevation: 0,
         actions: [
@@ -54,12 +54,20 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
   List<Map<String, dynamic>> _jadwalHariIni = [];
   Map<String, dynamic>? _selectedJadwal;
   Position? _currentPosition;
+  final DateTime _currentDate = DateTime.now();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadJadwalHariIni();
     _getCurrentLocation();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadJadwalHariIni() async {
@@ -95,9 +103,6 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
       if (mounted) {
         setState(() {
           _jadwalHariIni = jadwal;
-          if (_jadwalHariIni.isNotEmpty) {
-            _selectedJadwal = _jadwalHariIni.first;
-          }
         });
       }
     } catch (e) {
@@ -154,10 +159,12 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
   Future<void> _handleAbsen() async {
     final user = ref.read(currentUserProvider);
     if (user == null || _selectedJadwal == null || _currentPosition == null) {
+      setState(() {
+        _errorMessage = 'Silakan lengkapi data terlebih dahulu';
+        _successMessage = '';
+      });
       return;
     }
-
-    if (!mounted) return;
 
     setState(() {
       _isLoading = true;
@@ -175,15 +182,14 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
               .maybeSingle();
 
       if (profilResponse == null) {
-        if (mounted) {
-          setState(() => _errorMessage = 'Profil guru tidak ditemukan');
-        }
+        setState(() => _errorMessage = 'Profil guru tidak ditemukan');
         return;
       }
 
       final guruId = profilResponse['id'];
       final absenService = ref.read(absenServiceProvider);
 
+      // Cek izin disetujui
       final hasIzin = await absenService.cekIzinDisetujui(
         guruId,
         _selectedJadwal!['id'],
@@ -192,14 +198,22 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
 
       if (hasIzin) {
         if (mounted) {
-          setState(() {
-            _successMessage =
-                'Anda memiliki izin yang disetujui untuk jadwal ini';
-          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('✅ Anda memiliki izin yang disetujui'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
         }
         return;
       }
 
+      // Proses absensi
       final result = await absenService.absen(
         guruId: guruId,
         jadwalId: _selectedJadwal!['id'],
@@ -208,13 +222,37 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
         waktuAbsen: DateTime.now(),
       );
 
+      // Tampilkan pesan sukses berdasarkan status
+      final status = result['status'];
+      String statusMessage = '';
+      Color snackBarColor = Colors.green;
+
+      switch (status) {
+        case 'hadir':
+          statusMessage = '✅ Absensi berhasil - Status: Hadir';
+          snackBarColor = Colors.green;
+          break;
+        case 'terlambat':
+          statusMessage = '⚠️ Absensi berhasil - Status: Terlambat';
+          snackBarColor = Colors.orange;
+          break;
+        case 'alpa':
+          statusMessage = '❌ Absensi gagal - Status: Alpa';
+          snackBarColor = Colors.red;
+          break;
+        case 'izin':
+          statusMessage = 'ℹ️ Absensi dicatat - Status: Izin';
+          snackBarColor = Colors.blue;
+          break;
+        default:
+          statusMessage = 'Absensi berhasil';
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Absensi berhasil: ${_formatStatus(result['status'])}',
-            ),
-            backgroundColor: Colors.green,
+            content: Text(statusMessage),
+            backgroundColor: snackBarColor,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -222,16 +260,41 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
             margin: const EdgeInsets.all(16),
           ),
         );
-
-        setState(() {
-          _successMessage =
-              'Absensi berhasil: ${_formatStatus(result['status'])}';
-        });
-        _loadJadwalHariIni();
       }
+
+      // Refresh data setelah absen berhasil
+      await _loadJadwalHariIni();
     } catch (e) {
+      // Tangani error khusus untuk tampilan pesan
+      String errorMessage = '❌ Gagal melakukan absen';
+      Color snackBarColor = Colors.red;
+
+      if (e.toString().contains('Belum waktunya absen')) {
+        errorMessage = '⏱️ $e';
+        snackBarColor = Colors.orange;
+      } else if (e.toString().contains('sudah melakukan absensi')) {
+        errorMessage = 'ℹ️ $e';
+        snackBarColor = Colors.blue;
+      } else if (e.toString().contains('Absensi ditutup')) {
+        errorMessage = '⏱️ $e';
+        snackBarColor = Colors.orange;
+      } else if (e.toString().contains('di luar jangkauan')) {
+        errorMessage = '📍 $e';
+        snackBarColor = Colors.red;
+      }
+
       if (mounted) {
-        setState(() => _errorMessage = e.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: snackBarColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -248,21 +311,6 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
     }
   }
 
-  String _formatStatus(String status) {
-    switch (status) {
-      case 'hadir':
-        return 'Hadir';
-      case 'terlambat':
-        return 'Terlambat';
-      case 'alpa':
-        return 'Alpa';
-      case 'izin':
-        return 'Izin';
-      default:
-        return status;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -274,137 +322,256 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
         centerTitle: true,
         title: const Text('Absen Sekarang'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        elevation: 0,
       ),
-      body: _buildMainContent(theme),
+      body: SafeArea(child: _buildMainContent(theme)),
     );
   }
 
   Widget _buildMainContent(ThemeData theme) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.blue));
+      return const Center(child: CircularProgressIndicator());
     }
 
-    if (_errorMessage.isNotEmpty) {
+    if (_jadwalHariIni.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            _errorMessage,
-            style: TextStyle(color: Colors.red[600]),
-            textAlign: TextAlign.center,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.calendar_today_rounded,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tidak ada jadwal mengajar hari ini',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    if (_jadwalHariIni.isEmpty) {
-      return _buildNoScheduleUI();
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_successMessage.isNotEmpty)
-            _buildStatusCard(_successMessage, Colors.green[50]!, Colors.green),
-
-          _buildScheduleSelection(theme),
-          const SizedBox(height: 24),
-
-          if (_selectedJadwal != null) _buildScheduleDetailsCard(theme),
-
-          const SizedBox(height: 24),
-          _buildAbsenButton(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoScheduleUI() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.calendar_today_outlined,
-            size: 72,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Tidak ada jadwal mengajar hari ini',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusCard(String message, Color bgColor, Color textColor) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: textColor.withAlpha(100)),
-      ),
-    );
-  }
-
-  Widget _buildScheduleSelection(ThemeData theme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Pilih Jadwal',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+        // Status messages at the top
+        if (_errorMessage.isNotEmpty || _successMessage.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child:
+                _errorMessage.isNotEmpty
+                    ? _buildStatusMessage(
+                      _errorMessage,
+                      Icons.error_outline_rounded,
+                      Colors.red,
+                    )
+                    : _buildStatusMessage(
+                      _successMessage,
+                      Icons.check_circle_outline_rounded,
+                      Colors.green,
+                    ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-            color: Colors.white,
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<Map<String, dynamic>>(
-              value: _selectedJadwal,
-              isExpanded: true,
-              items:
-                  _jadwalHariIni.map((jadwal) {
-                    final mapel = jadwal['mata_pelajaran']?['nama'] ?? '-';
-                    final kelas = jadwal['kelas']?['nama'] ?? '-';
-                    final mulai = _formatTime(jadwal['waktu_mulai'] ?? '');
-                    final selesai = _formatTime(jadwal['waktu_selesai'] ?? '');
-                    return DropdownMenuItem(
-                      value: jadwal,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          '$mapel - $kelas ($mulai - $selesai)',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.black87),
+
+        // Scrollable Content
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            child: Column(
+              children: [
+                // Date Header Card
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Card(
+                    elevation: 0,
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.calendar_today,
+                              color: Colors.blue[600],
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hari Ini',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                DateFormat(
+                                  'EEEE, dd MMMM yyyy',
+                                  'id_ID',
+                                ).format(_currentDate),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Jadwal List
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PILIH JADWAL',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                          letterSpacing: 0.5,
                         ),
                       ),
-                    );
-                  }).toList(),
-              onChanged: (value) => setState(() => _selectedJadwal = value),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              dropdownColor: Colors.white,
-              icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                      const SizedBox(height: 8),
+                      ..._jadwalHariIni.map((j) {
+                        final isSelected = _selectedJadwal?['id'] == j['id'];
+                        final kelas = j['kelas'] as Map<String, dynamic>?;
+                        final mapel =
+                            j['mata_pelajaran'] as Map<String, dynamic>?;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          elevation: 0,
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color:
+                                  isSelected
+                                      ? Theme.of(context).primaryColor
+                                      : Colors.grey.shade300,
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              setState(() => _selectedJadwal = j);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isSelected
+                                              ? Theme.of(
+                                                context,
+                                              ).primaryColor.withAlpha(100)
+                                              : Colors.grey[100],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.schedule_outlined,
+                                      color:
+                                          isSelected
+                                              ? Theme.of(context).primaryColor
+                                              : Colors.grey[600],
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${mapel?['nama'] ?? 'Mata Pelajaran'}',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color:
+                                                isSelected
+                                                    ? Theme.of(
+                                                      context,
+                                                    ).primaryColor
+                                                    : Colors.black,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Kelas ${kelas?['nama'] ?? ''} • ${_formatTime(j['waktu_mulai'])} - ${_formatTime(j['waktu_selesai'])}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Theme.of(context).primaryColor,
+                                      size: 20,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+
+                // Schedule Details
+                if (_selectedJadwal != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        _buildSectionTitle('Detail Jadwal', theme),
+                        const SizedBox(height: 12),
+                        _buildDetailCard(),
+                      ],
+                    ),
+                  ),
+
+                // Submit Button
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: _buildAbsenButton(),
+                ),
+              ],
             ),
           ),
         ),
@@ -412,7 +579,62 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
     );
   }
 
-  Widget _buildScheduleDetailsCard(ThemeData theme) {
+  Widget _buildStatusMessage(String message, IconData icon, Color color) {
+    // Warna netral yang disesuaikan dengan jenis pesan
+    final bgColor = color.withAlpha(
+      20,
+    ); // Nilai alpha antara 0-255 (20 ≈ 0.08 opacity)
+    final borderColor = color.withAlpha(38); // 38 ≈ 0.15 opacity
+    final textColor = Colors.grey[800]; // Warna teks netral
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: textColor?.withAlpha(204), // 204 ≈ 0.8 opacity
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: Colors.grey[700],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailCard() {
     final lokasiAbsen = _selectedJadwal!['lokasi_absen'] ?? {};
     final radius =
         lokasiAbsen['radius'] != null ? '${lokasiAbsen['radius']} meter' : '-';
@@ -420,10 +642,7 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
     return Card(
       elevation: 0,
       color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey[200]!),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -431,28 +650,40 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
           children: [
             Row(
               children: [
-                Icon(Icons.info_outline, size: 20, color: Colors.blue),
-                const SizedBox(width: 8),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.purple[100],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.info_outline_rounded,
+                    color: Colors.purple[600],
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Text(
                   'Detail Jadwal',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _buildDetailRow(
               'Mata Pelajaran',
-              _selectedJadwal!['mata_pelajaran']?['nama'],
+              _selectedJadwal!['mata_pelajaran']?['nama'] ?? '-',
             ),
-            _buildDetailRow('Kelas', _selectedJadwal!['kelas']?['nama']),
+            _buildDetailRow('Kelas', _selectedJadwal!['kelas']?['nama'] ?? '-'),
             _buildDetailRow(
               'Waktu',
               '${_formatTime(_selectedJadwal!['waktu_mulai'])} - ${_formatTime(_selectedJadwal!['waktu_selesai'])}',
             ),
-            _buildDetailRow('Lokasi Absen', lokasiAbsen['nama']),
+            _buildDetailRow('Lokasi Absen', lokasiAbsen['nama'] ?? '-'),
             _buildDetailRow('Radius', radius),
           ],
         ),
@@ -460,9 +691,9 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
     );
   }
 
-  Widget _buildDetailRow(String label, dynamic value) {
+  Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -470,22 +701,16 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
             flex: 2,
             child: Text(
               label,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             flex: 3,
             child: Text(
-              value?.toString() ?? '-',
+              value,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ),
         ],
@@ -499,15 +724,28 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
       child: ElevatedButton(
         onPressed: _handleAbsen,
         style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue[600],
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
           elevation: 0,
         ),
-        child: const Text('ABSEN SEKARANG'),
+        child:
+            _isLoading
+                ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                : const Text(
+                  'ABSEN SEKARANG',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
       ),
     );
   }

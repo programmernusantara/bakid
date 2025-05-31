@@ -103,7 +103,7 @@ class _RiwayatAbsensiSiswaPageState
                   vertical: 12,
                 ),
               ),
-              child: const Text('Coba Lagi'),
+              child: const Text('Muat Ulang'),
             ),
           ],
         ),

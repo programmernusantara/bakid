@@ -30,7 +30,6 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     super.initState();
     if (widget.jurnalToEdit != null) {
       final materi = widget.jurnalToEdit!['materi_yang_dipelajari'] ?? '';
-      // Split existing materi into two parts if contains separator
       if (materi.contains('||')) {
         final parts = materi.split('||');
         _materiAwalController.text = parts[0].trim();
@@ -69,11 +68,9 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
       final supabase = ref.read(supabaseProvider);
       final currentDate = DateTime.now();
 
-      // Combine materi awal and akhir with separator
       final combinedMateri =
           '${_materiAwalController.text.trim()} || ${_materiAkhirController.text.trim()}';
 
-      // Check for existing jurnal
       final existing =
           await supabase
               .from('jurnal_mengajar')
@@ -89,7 +86,6 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
       }
 
       if (widget.jurnalToEdit == null) {
-        // Create new jurnal
         await supabase.from('jurnal_mengajar').insert({
           'guru_id': user['profil']['id'],
           'jadwal_id': selectedJadwal['id'],
@@ -101,7 +97,6 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
         });
         setState(() => _successMessage = 'Jurnal berhasil disimpan');
       } else {
-        // Update existing jurnal
         await supabase
             .from('jurnal_mengajar')
             .update({
@@ -134,13 +129,10 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     final currentDate = DateTime.now();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[200],
       appBar: AppBar(
         title: Text(
           widget.jurnalToEdit == null ? 'Buat Jurnal' : 'Edit Jurnal',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -148,6 +140,7 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
           onPressed: () => Navigator.pop(context),
         ),
         elevation: 0,
+        backgroundColor: Colors.white,
       ),
       body: SafeArea(
         child: Consumer(
@@ -171,9 +164,8 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                         const SizedBox(height: 16),
                         Text(
                           'Tidak ada jadwal mengajar hari ini',
-                          style: TextStyle(
+                          style: theme.textTheme.bodyLarge?.copyWith(
                             color: Colors.grey[600],
-                            fontSize: 16,
                           ),
                         ),
                       ],
@@ -181,107 +173,309 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
                   );
                 }
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Section
-                      _buildHeaderSection(currentDate),
-                      const SizedBox(height: 24),
-
-                      // Status messages
-                      if (_errorMessage.isNotEmpty)
-                        _buildStatusMessage(
-                          _errorMessage,
-                          Icons.error_outline_rounded,
-                          Colors.red,
-                        ),
-                      if (_successMessage.isNotEmpty)
-                        _buildStatusMessage(
-                          _successMessage,
-                          Icons.check_circle_outline_rounded,
-                          Colors.green,
-                        ),
-                      const SizedBox(height: 16),
-
-                      // Schedule Dropdown
-                      _buildJadwalDropdown(data),
-                      const SizedBox(height: 24),
-
-                      // Form Section
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final selectedJadwal = ref.watch(
-                            jurnalSelectedJadwalProvider,
-                          );
-                          return Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Materi Section
-                                _buildSectionTitle('Materi Pembelajaran'),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Awal Materi',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
+                return Column(
+                  children: [
+                    // Scrollable Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            // Date Header Card
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              child: Card(
+                                elevation: 0,
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[50],
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.calendar_today,
+                                          color: Colors.blue[600],
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Hari Ini',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                          Text(
+                                            DateFormat(
+                                              'EEEE, dd MMMM yyyy',
+                                              'id_ID',
+                                            ).format(currentDate),
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[800],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                _buildInputField(
-                                  controller: _materiAwalController,
-                                  hint: 'Masukkan materi awal pembelajaran',
-                                  maxLines: 3,
-                                  isRequired: true,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Akhir Materi',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                _buildInputField(
-                                  controller: _materiAkhirController,
-                                  hint: 'Masukkan materi akhir pembelajaran',
-                                  maxLines: 3,
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Kendala Section
-                                _buildSectionTitle('Kendala Pembelajaran'),
-                                const SizedBox(height: 12),
-                                _buildInputField(
-                                  controller: _kendalaController,
-                                  hint: 'Masukkan kendala yang dihadapi',
-                                  maxLines: 3,
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Solusi Section
-                                _buildSectionTitle('Solusi Kendala'),
-                                const SizedBox(height: 12),
-                                _buildInputField(
-                                  controller: _solusiController,
-                                  hint: 'Masukkan solusi yang dilakukan',
-                                  maxLines: 3,
-                                ),
-                                const SizedBox(height: 32),
-
-                                // Submit Button
-                                _buildSubmitButton(selectedJadwal),
-                              ],
+                              ),
                             ),
-                          );
-                        },
+
+                            // Schedule Selection
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'PILIH JADWAL',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[600],
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...data.map((j) {
+                                    final isSelected =
+                                        ref.watch(
+                                          jurnalSelectedJadwalProvider,
+                                        )?['id'] ==
+                                        j['id'];
+                                    final kelas =
+                                        j['kelas'] as Map<String, dynamic>?;
+                                    final mapel =
+                                        j['mata_pelajaran']
+                                            as Map<String, dynamic>?;
+
+                                    return Card(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      elevation: 0,
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color:
+                                              isSelected
+                                                  ? Theme.of(
+                                                    context,
+                                                  ).primaryColor
+                                                  : Colors.grey.shade300,
+                                          width: isSelected ? 1.5 : 1,
+                                        ),
+                                      ),
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          ref
+                                              .read(
+                                                jurnalSelectedJadwalProvider
+                                                    .notifier,
+                                              )
+                                              .state = j;
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      isSelected
+                                                          ? Theme.of(context)
+                                                              .primaryColor
+                                                              .withAlpha(100)
+                                                          : Colors.grey[100],
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  Icons.schedule_outlined,
+                                                  color:
+                                                      isSelected
+                                                          ? Theme.of(
+                                                            context,
+                                                          ).primaryColor
+                                                          : Colors.grey[600],
+                                                  size: 20,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      '${mapel?['nama'] ?? 'Mata Pelajaran'}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 14,
+                                                        color:
+                                                            isSelected
+                                                                ? Theme.of(
+                                                                  context,
+                                                                ).primaryColor
+                                                                : Colors.black,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      'Kelas ${kelas?['nama'] ?? ''} • ${j['waktu_mulai']} - ${j['waktu_selesai']}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              if (isSelected)
+                                                Icon(
+                                                  Icons.check_circle,
+                                                  color:
+                                                      Theme.of(
+                                                        context,
+                                                      ).primaryColor,
+                                                  size: 20,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+
+                            // Form Section
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 16),
+
+                                    // Materi Section
+                                    _buildSectionTitle(
+                                      'Materi Pembelajaran',
+                                      theme,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildFormCard(
+                                      icon: Icons.menu_book_rounded,
+                                      iconColor: Colors.blue,
+                                      title: 'Awal Materi',
+                                      child: _buildInputField(
+                                        controller: _materiAwalController,
+                                        label:
+                                            'Masukkan materi awal pembelajaran',
+                                        isRequired: true,
+                                        maxLines: 3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildFormCard(
+                                      icon: Icons.menu_book_rounded,
+                                      iconColor: Colors.blue,
+                                      title: 'Akhir Materi',
+                                      child: _buildInputField(
+                                        controller: _materiAkhirController,
+                                        label:
+                                            'Masukkan materi akhir pembelajaran',
+                                        maxLines: 3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Kendala Section
+                                    _buildSectionTitle(
+                                      'Kendala Pembelajaran',
+                                      theme,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildFormCard(
+                                      icon: Icons.warning_rounded,
+                                      iconColor: Colors.orange,
+                                      title: 'Kendala',
+                                      child: _buildInputField(
+                                        controller: _kendalaController,
+                                        label: 'Masukkan kendala yang dihadapi',
+                                        maxLines: 3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Solusi Section
+                                    _buildSectionTitle('Solusi Kendala', theme),
+                                    const SizedBox(height: 12),
+                                    _buildFormCard(
+                                      icon: Icons.lightbulb_rounded,
+                                      iconColor: Colors.green,
+                                      title: 'Solusi',
+                                      child: _buildInputField(
+                                        controller: _solusiController,
+                                        label: 'Masukkan solusi yang dilakukan',
+                                        maxLines: 3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+
+                                    // Submit Button
+                                    _buildSubmitButton(
+                                      ref.watch(jurnalSelectedJadwalProvider),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+
+                    // Status messages at the bottom
+                    if (_errorMessage.isNotEmpty || _successMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child:
+                            _errorMessage.isNotEmpty
+                                ? _buildStatusMessage(
+                                  _errorMessage,
+                                  Icons.error_outline_rounded,
+                                  Colors.red,
+                                )
+                                : _buildStatusMessage(
+                                  _successMessage,
+                                  Icons.check_circle_outline_rounded,
+                                  Colors.green,
+                                ),
+                      ),
+                  ],
                 );
               },
             );
@@ -291,150 +485,127 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
     );
   }
 
-  Widget _buildHeaderSection(DateTime date) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Hari Ini',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildStatusMessage(String message, IconData icon, Color color) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withAlpha(100)),
+    return Card(
+      elevation: 0,
+      color: color.withAlpha(30),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: color.withAlpha(100)),
       ),
-      child: Row(
-        children: [
-          Icon(icon, size: 24, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildJadwalDropdown(List<Map<String, dynamic>> jadwalList) {
-    return Consumer(
-      builder: (context, ref, _) {
-        final selectedJadwal = ref.watch(jurnalSelectedJadwalProvider);
-        final selected = selectedJadwal ?? jadwalList.first;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
           children: [
-            _buildSectionTitle('Jadwal Mengajar'),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<Map<String, dynamic>>(
-              value: selected,
-              decoration: InputDecoration(
-                labelText: 'Pilih Jadwal',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              items:
-                  jadwalList.map((jadwal) {
-                    final mp = jadwal['mata_pelajaran'] ?? {};
-                    final kelas = jadwal['kelas'] ?? {};
-                    return DropdownMenuItem<Map<String, dynamic>>(
-                      value: jadwal,
-                      child: Text(
-                        '${mp['nama']} - ${kelas['nama']} (${jadwal['waktu_mulai']}-${jadwal['waktu_selesai']})',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    );
-                  }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  ref.read(jurnalSelectedJadwalProvider.notifier).state = value;
-                }
-              },
-              validator: (value) {
-                if (value == null) return 'Pilih jadwal terlebih dahulu';
-                return null;
-              },
             ),
           ],
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: Colors.grey[700],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required Widget child,
+  }) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: iconColor.withAlpha(100),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 18, color: iconColor),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildInputField({
     required TextEditingController controller,
-    required String hint,
+    required String label,
     int maxLines = 1,
     bool isRequired = false,
   }) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
-        hintText: hint,
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         filled: true,
         fillColor: Colors.grey[50],
-        contentPadding: const EdgeInsets.all(16),
       ),
+      style: const TextStyle(fontSize: 14),
       maxLines: maxLines,
       validator:
           isRequired
               ? (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Field ini wajib diisi';
-                }
+                if (value == null || value.isEmpty) return 'Harus diisi';
                 return null;
               }
               : null,
@@ -444,42 +615,39 @@ class _JurnalFormState extends ConsumerState<JurnalForm> {
   Widget _buildSubmitButton(Map<String, dynamic>? selectedJadwal) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
       child: ElevatedButton(
         onPressed: _isLoading ? null : () => _submitJurnal(selectedJadwal),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blueAccent,
+          backgroundColor: Colors.blue[600],
           foregroundColor: Colors.white,
-          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          elevation: 0,
         ),
         child:
             _isLoading
                 ? const SizedBox(
-                  height: 24,
-                  width: 24,
+                  height: 20,
+                  width: 20,
                   child: CircularProgressIndicator(
                     color: Colors.white,
-                    strokeWidth: 3,
+                    strokeWidth: 2,
                   ),
                 )
                 : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      widget.jurnalToEdit == null
-                          ? Icons.save_rounded
-                          : Icons.edit_rounded,
-                      size: 20,
-                    ),
                     const SizedBox(width: 8),
                     Text(
                       widget.jurnalToEdit == null
-                          ? 'Simpan Jurnal'
-                          : 'Update Jurnal',
-                      style: const TextStyle(fontSize: 16),
+                          ? 'SIMPAN JURNAL'
+                          : 'Perbarui Jurnal',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),

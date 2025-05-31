@@ -1,7 +1,6 @@
 import 'package:bakid/core/services/auth_service.dart';
 import 'package:bakid/fitur/auth/auth_providers.dart';
 import 'package:bakid/fitur/guru/kehadiran_siswa/absensi_siswa_providers.dart';
-import 'package:bakid/fitur/guru/kehadiran_siswa/jadwal_absensi_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -111,19 +110,20 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
 
   @override
   Widget build(BuildContext context) {
-    Theme.of(context);
+    final theme = Theme.of(context);
     final currentDate = DateTime.now();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: const Text('Isi Absensi Siswa'),
+        title: const Text('Absensi Siswa'),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
         elevation: 0,
+        backgroundColor: Colors.white,
       ),
       body: SafeArea(
         child: Consumer(
@@ -147,9 +147,8 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
                         const SizedBox(height: 16),
                         Text(
                           'Tidak ada jadwal mengajar hari ini',
-                          style: TextStyle(
+                          style: theme.textTheme.bodyLarge?.copyWith(
                             color: Colors.grey[600],
-                            fontSize: 16,
                           ),
                         ),
                       ],
@@ -157,102 +156,304 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
                   );
                 }
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Section
-                      _buildHeaderSection(currentDate),
-                      const SizedBox(height: 24),
-
-                      // Status messages
-                      if (_errorMessage.isNotEmpty)
-                        _buildStatusMessage(
-                          _errorMessage,
-                          Icons.error_outline_rounded,
-                          Colors.red,
-                        ),
-                      if (_successMessage.isNotEmpty)
-                        _buildStatusMessage(
-                          _successMessage,
-                          Icons.check_circle_outline_rounded,
-                          Colors.green,
-                        ),
-                      const SizedBox(height: 16),
-
-                      // Schedule Dropdown
-                      const JadwalAbsensiDropdown(),
-                      const SizedBox(height: 24),
-
-                      // Form Section
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final selectedJadwal = ref.watch(
-                            absensiSiswaSelectedJadwalProvider,
-                          );
-                          return Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Hadir Section
-                                _buildSectionTitle('Kehadiran Siswa'),
-                                const SizedBox(height: 16),
-                                _buildAttendanceCard(
-                                  icon: Icons.check_circle_rounded,
-                                  iconColor: Colors.green,
-                                  title: 'Hadir',
-                                  controller: _jumlahHadirController,
-                                  label: 'Jumlah siswa hadir',
-                                  max:
-                                      selectedJadwal?['kelas']?['jumlah_murid'],
+                return Column(
+                  children: [
+                    // Scrollable Header Section
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            // Date Header Card
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              child: Card(
+                                elevation: 0,
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                const SizedBox(height: 16),
-
-                                // Izin Section
-                                _buildAttendanceCard(
-                                  icon: Icons.person_outline_rounded,
-                                  iconColor: Colors.orange,
-                                  title: 'Izin',
-                                  controller: _jumlahIzinController,
-                                  label: 'Jumlah siswa izin',
-                                  max:
-                                      selectedJadwal?['kelas']?['jumlah_murid'],
-                                  additionalField: _buildNameField(
-                                    controller: _namaIzinController,
-                                    label: 'Nama siswa izin',
-                                    hint: 'Opsional (contoh: Andi, Budi, Caca)',
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[50],
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.calendar_today,
+                                          color: Colors.blue[600],
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Hari Ini',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                          Text(
+                                            DateFormat(
+                                              'EEEE, dd MMMM yyyy',
+                                              'id_ID',
+                                            ).format(currentDate),
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[800],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-
-                                // Alpa Section
-                                _buildAttendanceCard(
-                                  icon: Icons.person_off_rounded,
-                                  iconColor: Colors.red,
-                                  title: 'Alpa',
-                                  controller: _jumlahAlpaController,
-                                  label: 'Jumlah siswa alpa',
-                                  max:
-                                      selectedJadwal?['kelas']?['jumlah_murid'],
-                                  additionalField: _buildNameField(
-                                    controller: _namaAlpaController,
-                                    label: 'Nama siswa alpa',
-                                    hint: 'Opsional (Contoh: Dedi, Eka, Fani)',
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-
-                                // Submit Button
-                                _buildSubmitButton(selectedJadwal),
-                              ],
+                              ),
                             ),
-                          );
-                        },
+
+                            // Schedule Selection
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'PILIH JADWAL',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[600],
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...data.map((j) {
+                                    final isSelected =
+                                        ref.watch(
+                                          absensiSiswaSelectedJadwalProvider,
+                                        )?['id'] ==
+                                        j['id'];
+                                    final kelas =
+                                        j['kelas'] as Map<String, dynamic>?;
+                                    final mapel =
+                                        j['mata_pelajaran']
+                                            as Map<String, dynamic>?;
+
+                                    return Card(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      elevation: 0,
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color:
+                                              isSelected
+                                                  ? Theme.of(
+                                                    context,
+                                                  ).primaryColor
+                                                  : Colors.grey.shade300,
+                                          width: isSelected ? 1.5 : 1,
+                                        ),
+                                      ),
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          ref
+                                              .read(
+                                                absensiSiswaSelectedJadwalProvider
+                                                    .notifier,
+                                              )
+                                              .state = j;
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      isSelected
+                                                          ? Theme.of(context)
+                                                              .primaryColor
+                                                              .withAlpha(100)
+                                                          : Colors.grey[100],
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  Icons.schedule_outlined,
+                                                  color:
+                                                      isSelected
+                                                          ? Theme.of(
+                                                            context,
+                                                          ).primaryColor
+                                                          : Colors.grey[600],
+                                                  size: 20,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      '${mapel?['nama'] ?? 'Mata Pelajaran'}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 14,
+                                                        color:
+                                                            isSelected
+                                                                ? Theme.of(
+                                                                  context,
+                                                                ).primaryColor
+                                                                : Colors.black,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      'Kelas ${kelas?['nama'] ?? ''} • ${j['waktu_mulai']} - ${j['waktu_selesai']}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              if (isSelected)
+                                                Icon(
+                                                  Icons.check_circle,
+                                                  color:
+                                                      Theme.of(
+                                                        context,
+                                                      ).primaryColor,
+                                                  size: 20,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+
+                            // Form Section
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 16),
+                                    // Hadir Section
+                                    _buildSectionTitle(
+                                      'Kehadiran Siswa',
+                                      theme,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildAttendanceCard(
+                                      icon: Icons.check_circle_rounded,
+                                      iconColor: Colors.green,
+                                      title: 'Hadir',
+                                      controller: _jumlahHadirController,
+                                      label: 'Jumlah siswa hadir',
+                                      max:
+                                          ref.watch(
+                                            absensiSiswaSelectedJadwalProvider,
+                                          )?['kelas']?['jumlah_murid'],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Izin Section
+                                    _buildAttendanceCard(
+                                      icon: Icons.person_outline_rounded,
+                                      iconColor: Colors.orange,
+                                      title: 'Izin',
+                                      controller: _jumlahIzinController,
+                                      label: 'Jumlah siswa izin',
+                                      max:
+                                          ref.watch(
+                                            absensiSiswaSelectedJadwalProvider,
+                                          )?['kelas']?['jumlah_murid'],
+                                      additionalField: _buildNameField(
+                                        controller: _namaIzinController,
+                                        label: 'Nama siswa izin',
+                                        hint:
+                                            'Opsional (contoh: Andi, Budi, Caca)',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Alpa Section
+                                    _buildAttendanceCard(
+                                      icon: Icons.person_off_rounded,
+                                      iconColor: Colors.red,
+                                      title: 'Alpa',
+                                      controller: _jumlahAlpaController,
+                                      label: 'Jumlah siswa alpa',
+                                      max:
+                                          ref.watch(
+                                            absensiSiswaSelectedJadwalProvider,
+                                          )?['kelas']?['jumlah_murid'],
+                                      additionalField: _buildNameField(
+                                        controller: _namaAlpaController,
+                                        label: 'Nama siswa alpa',
+                                        hint:
+                                            'Opsional (Contoh: Dedi, Eka, Fani)',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+
+                                    // Submit Button
+                                    _buildSubmitButton(
+                                      ref.watch(
+                                        absensiSiswaSelectedJadwalProvider,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+
+                    // Status messages at the bottom
+                    if (_errorMessage.isNotEmpty || _successMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child:
+                            _errorMessage.isNotEmpty
+                                ? _buildStatusMessage(
+                                  _errorMessage,
+                                  Icons.error_outline_rounded,
+                                  Colors.red,
+                                )
+                                : _buildStatusMessage(
+                                  _successMessage,
+                                  Icons.check_circle_outline_rounded,
+                                  Colors.green,
+                                ),
+                      ),
+                  ],
                 );
               },
             );
@@ -262,65 +463,46 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
     );
   }
 
-  Widget _buildHeaderSection(DateTime date) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Hari Ini',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date),
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildStatusMessage(String message, IconData icon, Color color) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withAlpha(100),
-        borderRadius: BorderRadius.circular(12),
+    return Card(
+      elevation: 0,
+      color: color.withAlpha(30),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: color.withAlpha(100)),
       ),
-      child: Row(
-        children: [
-          Icon(icon, size: 24, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
+  Widget _buildSectionTitle(String title, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: Colors.grey[700],
+        ),
       ),
     );
   }
@@ -336,10 +518,8 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
   }) {
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[200]!, width: 1),
-      ),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -348,12 +528,13 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: iconColor.withAlpha(100),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, size: 20, color: iconColor),
+                  child: Icon(icon, size: 18, color: iconColor),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -386,22 +567,24 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey[600]),
-        floatingLabelBehavior: FloatingLabelBehavior.never,
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
+        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+        isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
         suffixText: 'siswa',
-        suffixStyle: TextStyle(color: Colors.grey[600]),
+        suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
       ),
-      style: const TextStyle(color: Colors.black87),
+      style: const TextStyle(fontSize: 14),
       keyboardType: TextInputType.number,
       validator: (value) {
         if (value == null || value.isEmpty) return 'Harus diisi';
@@ -422,22 +605,24 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey[600]),
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[500]),
-        floatingLabelBehavior: FloatingLabelBehavior.never,
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
+        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+        labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+        isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
       ),
-      style: const TextStyle(color: Colors.black87),
+      style: const TextStyle(fontSize: 14),
       maxLines: 2,
     );
   }
@@ -445,32 +630,30 @@ class _IsiAbsensiSiswaPageState extends ConsumerState<IsiAbsensiSiswaPage> {
   Widget _buildSubmitButton(Map<String, dynamic>? selectedJadwal) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
       child: ElevatedButton(
         onPressed: _isLoading ? null : () => _submitAbsensi(selectedJadwal),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blueAccent,
+          backgroundColor: Colors.blue[600],
           foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child:
             _isLoading
                 ? const SizedBox(
-                  height: 24,
-                  width: 24,
+                  height: 20,
+                  width: 20,
                   child: CircularProgressIndicator(
                     color: Colors.white,
-                    strokeWidth: 3,
+                    strokeWidth: 2,
                   ),
                 )
-                : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.save_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text('Simpan Absensi'),
-                  ],
+                : const Text(
+                  'SIMPAN ABSENSI ',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
       ),
     );

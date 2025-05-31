@@ -15,32 +15,45 @@ class AnnouncementCard extends StatelessWidget {
     this.date,
   });
 
-  void _showFullImage(BuildContext context, String imageUrl) {
-    showDialog(
-      context: context,
-      builder:
-          (_) => Dialog(
-            child: InteractiveViewer(
-              panEnabled: true,
-              minScale: 0.5,
-              maxScale: 3.0,
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.contain,
-                errorBuilder:
-                    (context, error, stackTrace) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          size: 50,
-                          color: Colors.white,
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => Scaffold(
+              backgroundColor: Colors.black,
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              body: Center(
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 0.5,
+                  maxScale: 3.0,
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder:
+                        (context, error, stackTrace) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(
+                              Icons.broken_image,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+      ),
     );
   }
 
@@ -83,7 +96,7 @@ class AnnouncementCard extends StatelessWidget {
           // Image in the middle
           if (imageUrl != null)
             GestureDetector(
-              onTap: () => _showFullImage(context, imageUrl!),
+              onTap: () => _showFullScreenImage(context, imageUrl!),
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(0),
@@ -93,6 +106,14 @@ class AnnouncementCard extends StatelessWidget {
                   width: double.infinity,
                   height: 180,
                   fit: BoxFit.cover,
+                  errorBuilder:
+                      (context, error, stackTrace) => Container(
+                        height: 180,
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: Icon(Icons.broken_image, size: 50),
+                        ),
+                      ),
                 ),
               ),
             ),

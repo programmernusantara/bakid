@@ -11,10 +11,7 @@ class PerizinanPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: const Text(
-          'Perizinan Guru',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        title: const Text('Perizinan'),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,

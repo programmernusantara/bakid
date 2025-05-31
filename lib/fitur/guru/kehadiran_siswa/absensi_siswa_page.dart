@@ -12,7 +12,7 @@ class AbsensiSiswaPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         centerTitle: true,
-        title: const Text('Absensi Siswa'),
+        title: const Text('Siswa'),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),

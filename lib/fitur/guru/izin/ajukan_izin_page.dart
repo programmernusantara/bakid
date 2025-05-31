@@ -1,9 +1,9 @@
-// ajukan_izin_page.dart
 import 'package:bakid/core/services/auth_service.dart';
+import 'package:bakid/fitur/auth/auth_providers.dart';
 import 'package:bakid/fitur/guru/izin/izin_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:bakid/fitur/auth/auth_providers.dart';
+import 'package:intl/intl.dart';
 
 class AjukanIzinPage extends ConsumerStatefulWidget {
   const AjukanIzinPage({super.key});
@@ -18,15 +18,16 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
   String? _jenisIzin;
   String? _selectedScheduleId;
   bool _isLoading = false;
+  String _errorMessage = '';
+  String _successMessage = '';
 
   final List<String> _jenisIzinList = [
     'Sakit',
-    'Keluarga',
-    'Urusan Pribadi',
-    'Lainnya',
+    'Pulang',
+    'Keluar',
+    'Lain-lain',
   ];
 
-  // In the _submitIzin method of AjukanIzinPage
   Future<void> _submitIzin() async {
     if (!_formKey.currentState!.validate()) return;
     if (_jenisIzin == null || _selectedScheduleId == null) return;
@@ -34,7 +35,12 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
     final user = ref.read(currentUserProvider);
     if (user == null || user['profil'] == null) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+      _successMessage = '';
+    });
+
     try {
       final supabase = ref.read(supabaseProvider);
       final today = DateTime.now();
@@ -48,36 +54,19 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
         'status': 'menunggu',
       });
 
-      if (!mounted) return;
-
-      // Invalidate the provider to force refresh
       ref.invalidate(jadwalHariIniProvider);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Permohonan izin berhasil diajukan'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-
-      // Return true to indicate success and trigger refresh
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
+      setState(() {
+        _successMessage = 'Permohonan izin berhasil diajukan';
+        _formKey.currentState?.reset();
+        _alasanController.clear();
+        _jenisIzin = null;
+        _selectedScheduleId = null;
+      });
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal mengajukan izin: ${e.toString()}'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+      setState(() => _errorMessage = 'Gagal mengajukan izin: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() => _isLoading = false);
     }
   }
 
@@ -89,281 +78,575 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
 
   @override
   Widget build(BuildContext context) {
-    final jadwalFuture = ref.watch(jadwalHariIniProvider);
+    final theme = Theme.of(context);
+    final currentDate = DateTime.now();
 
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: const Text(
-          'Ajukan Izin',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        title: const Text('Ajukan Izin'),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
         elevation: 0,
+        backgroundColor: Colors.white,
       ),
-      body: jadwalFuture.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Error: $error')),
-        data: (jadwal) {
-          if (jadwal.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.schedule_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Anda tidak mempunyai jadwal\nuntuk izin hari ini',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+      body: SafeArea(
+        child: Consumer(
+          builder: (context, ref, _) {
+            final jadwal = ref.watch(jadwalHariIniProvider);
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Pilih Jadwal
-                  Text(
-                    'PILIH JADWAL',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...jadwal.map((j) {
-                    final isSelected = _selectedScheduleId == j['id'];
-                    final kelas = j['kelas'] as Map<String, dynamic>?;
-                    final mapel = j['mata_pelajaran'] as Map<String, dynamic>?;
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      elevation: 0,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color:
-                              isSelected
-                                  ? Theme.of(context).primaryColor
-                                  : Colors.grey.shade300,
-                          width: isSelected ? 1.5 : 1,
+            return jadwal.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(child: Text('Error: $error')),
+              data: (data) {
+                if (data.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.schedule_outlined,
+                          size: 48,
+                          color: Colors.grey[400],
                         ),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          setState(() => _selectedScheduleId = j['id']);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isSelected
-                                          ? Theme.of(
-                                            context,
-                                          ).primaryColor.withAlpha(100)
-                                          : Colors.grey[100],
-                                  shape: BoxShape.circle,
+                        const SizedBox(height: 16),
+                        Text(
+                          'Anda tidak mempunyai jadwal\nuntuk izin hari ini',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    // Scrollable Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            // Date Header Card
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              child: Card(
+                                elevation: 0,
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Icon(
-                                  Icons.schedule_outlined,
-                                  color:
-                                      isSelected
-                                          ? Theme.of(context).primaryColor
-                                          : Colors.grey[600],
-                                  size: 20,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[50],
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.calendar_today,
+                                          color: Colors.blue[600],
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Hari Ini',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                          Text(
+                                            DateFormat(
+                                              'EEEE, dd MMMM yyyy',
+                                              'id_ID',
+                                            ).format(currentDate),
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[800],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
+                            ),
+
+                            // Schedule Selection
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'PILIH JADWAL',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[600],
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...data.map((j) {
+                                    final isSelected =
+                                        _selectedScheduleId == j['id'];
+                                    final kelas =
+                                        j['kelas'] as Map<String, dynamic>?;
+                                    final mapel =
+                                        j['mata_pelajaran']
+                                            as Map<String, dynamic>?;
+
+                                    return Card(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      elevation: 0,
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color:
+                                              isSelected
+                                                  ? Theme.of(
+                                                    context,
+                                                  ).primaryColor
+                                                  : Colors.grey.shade300,
+                                          width: isSelected ? 1.5 : 1,
+                                        ),
+                                      ),
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          setState(
+                                            () => _selectedScheduleId = j['id'],
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      isSelected
+                                                          ? Theme.of(context)
+                                                              .primaryColor
+                                                              .withAlpha(100)
+                                                          : Colors.grey[100],
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  Icons.schedule_outlined,
+                                                  color:
+                                                      isSelected
+                                                          ? Theme.of(
+                                                            context,
+                                                          ).primaryColor
+                                                          : Colors.grey[600],
+                                                  size: 20,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      '${mapel?['nama'] ?? 'Mata Pelajaran'}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 14,
+                                                        color:
+                                                            isSelected
+                                                                ? Theme.of(
+                                                                  context,
+                                                                ).primaryColor
+                                                                : Colors.black,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      'Kelas ${kelas?['nama'] ?? ''} • ${j['waktu_mulai']} - ${j['waktu_selesai']}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              if (isSelected)
+                                                Icon(
+                                                  Icons.check_circle,
+                                                  color:
+                                                      Theme.of(
+                                                        context,
+                                                      ).primaryColor,
+                                                  size: 20,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+
+                            // Form Section
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: Form(
+                                key: _formKey,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      '${mapel?['nama'] ?? 'Mata Pelajaran'}',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color:
-                                            isSelected
-                                                ? Theme.of(context).primaryColor
-                                                : Colors.black,
+                                    const SizedBox(height: 16),
+
+                                    // Jenis Izin Section
+                                    _buildSectionTitle('Jenis Izin', theme),
+                                    const SizedBox(height: 12),
+                                    Card(
+                                      elevation: 0,
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  width: 32,
+                                                  height: 32,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.orange[100],
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.assignment_outlined,
+                                                    color: Colors.orange[600],
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  'Jenis Izin',
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            DropdownButtonFormField<String>(
+                                              value: _jenisIzin,
+                                              decoration: InputDecoration(
+                                                labelText: 'Pilih jenis izin',
+                                                labelStyle: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontSize: 13,
+                                                ),
+                                                isDense: true,
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 14,
+                                                    ),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  borderSide: BorderSide(
+                                                    color: Colors.grey[300]!,
+                                                  ),
+                                                ),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                      borderSide: BorderSide(
+                                                        color:
+                                                            Colors.grey[300]!,
+                                                      ),
+                                                    ),
+                                                filled: true,
+                                                fillColor: Colors.grey[50],
+                                              ),
+                                              items:
+                                                  _jenisIzinList.map((
+                                                    String value,
+                                                  ) {
+                                                    return DropdownMenuItem<
+                                                      String
+                                                    >(
+                                                      value: value,
+                                                      child: Text(value),
+                                                    );
+                                                  }).toList(),
+                                              onChanged: (value) {
+                                                setState(
+                                                  () => _jenisIzin = value,
+                                                );
+                                              },
+                                              validator: (value) {
+                                                if (value == null) {
+                                                  return 'Pilih jenis izin';
+                                                }
+                                                return null;
+                                              },
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Kelas ${kelas?['nama'] ?? ''} • ${j['waktu_mulai']} - ${j['waktu_selesai']}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
+                                    const SizedBox(height: 16),
+
+                                    // Alasan Izin Section
+                                    _buildSectionTitle('Alasan Izin', theme),
+                                    const SizedBox(height: 12),
+                                    Card(
+                                      elevation: 0,
+                                      color: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  width: 32,
+                                                  height: 32,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.red[100],
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.note_outlined,
+                                                    color: Colors.red[600],
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  'Alasan Izin',
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            TextFormField(
+                                              controller: _alasanController,
+                                              decoration: InputDecoration(
+                                                labelText:
+                                                    'Masukkan alasan izin',
+                                                labelStyle: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontSize: 13,
+                                                ),
+                                                isDense: true,
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 14,
+                                                    ),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  borderSide: BorderSide(
+                                                    color: Colors.grey[300]!,
+                                                  ),
+                                                ),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                      borderSide: BorderSide(
+                                                        color:
+                                                            Colors.grey[300]!,
+                                                      ),
+                                                    ),
+                                                filled: true,
+                                                fillColor: Colors.grey[50],
+                                              ),
+                                              maxLines: 4,
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.isEmpty) {
+                                                  return 'Harap isi alasan izin';
+                                                }
+                                                return null;
+                                              },
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
+                                    const SizedBox(height: 24),
+
+                                    // Submit Button
+                                    _buildSubmitButton(),
+                                    const SizedBox(height: 16),
                                   ],
                                 ),
                               ),
-                              if (isSelected)
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  }),
-                  const SizedBox(height: 24),
+                    ),
 
-                  // Jenis Izin
-                  Text(
-                    'JENIS IZIN',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _jenisIzin,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                    items:
-                        _jenisIzinList.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                    onChanged: (value) {
-                      setState(() => _jenisIzin = value);
-                    },
-                    validator: (value) {
-                      if (value == null) return 'Pilih jenis izin';
-                      return null;
-                    },
-                    hint: const Text('Pilih Jenis Izin'),
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    borderRadius: BorderRadius.circular(12),
-                    style: TextStyle(color: Colors.grey[800], fontSize: 14),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Alasan Izin
-                  Text(
-                    'ALASAN IZIN',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _alasanController,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      hintText: 'Masukkan alasan izin Anda',
-                      hintStyle: TextStyle(color: Colors.grey[500]),
-                      contentPadding: const EdgeInsets.all(16),
-                    ),
-                    maxLines: 4,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Harap isi alasan izin';
-                      }
-                      return null;
-                    },
-                    style: TextStyle(color: Colors.grey[800], fontSize: 14),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Tombol Submit
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        backgroundColor: Colors.blue,
-                        elevation: 0,
-                      ),
-                      onPressed: _isLoading ? null : _submitIzin,
-                      child:
-                          _isLoading
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                    // Status messages at the bottom
+                    if (_errorMessage.isNotEmpty || _successMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child:
+                            _errorMessage.isNotEmpty
+                                ? _buildStatusMessage(
+                                  _errorMessage,
+                                  Icons.error_outline_rounded,
+                                  Colors.red,
+                                )
+                                : _buildStatusMessage(
+                                  _successMessage,
+                                  Icons.check_circle_outline_rounded,
+                                  Colors.green,
                                 ),
-                              )
-                              : const Text(
-                                'AJUKAN IZIN',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                    ),
-                  ),
-                ],
+                      ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusMessage(String message, IconData icon, Color color) {
+    return Card(
+      elevation: 0,
+      color: color.withAlpha(30),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: color.withAlpha(100)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          );
-        },
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: Colors.grey[700],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submitIzin,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue[600],
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child:
+            _isLoading
+                ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'AJUKAN IZIN',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
       ),
     );
   }

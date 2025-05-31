@@ -29,12 +29,7 @@ class JurnalPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: Text(
-          'Riwayat Jurnal',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: Text('Jurnal'),
         centerTitle: true,
         backgroundColor: Colors.white,
         actions: [
@@ -80,7 +75,7 @@ class JurnalPage extends ConsumerWidget {
             ),
         data: (jurnalList) {
           if (jurnalList.isEmpty) {
-            return _buildEmptyState(theme);
+            return _buildEmptyState(context, ref, theme);
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -96,7 +91,11 @@ class JurnalPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme) {
+  Widget _buildEmptyState(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+  ) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -112,6 +111,12 @@ class JurnalPage extends ConsumerWidget {
             style: theme.textTheme.titleMedium?.copyWith(
               color: theme.colorScheme.onSurface.withAlpha(100),
             ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => ref.refresh(jurnalListProvider),
+            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+            child: const Text('Muat Ulang'),
           ),
         ],
       ),
