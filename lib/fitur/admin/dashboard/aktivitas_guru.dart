@@ -83,7 +83,7 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
               setState(() => selectedFilter = value);
             },
             itemBuilder: (context) {
-              return ['Sedang Berlangsung', 'Akan Datang', 'Selesai']
+              return filters
                   .map(
                     (filter) => PopupMenuItem<String>(
                       value: filter,
@@ -113,7 +113,11 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
           data: (list) {
             final filteredList =
                 list.where((e) {
-                  return _getStatusText(e.statusKegiatan) == selectedFilter;
+                  final statusText = _getNormalizedStatus(e.statusKegiatan);
+                  return statusText == selectedFilter ||
+                      (selectedFilter == 'Selesai' &&
+                          (statusText == 'Selesai' ||
+                              e.statusAbsensi.contains('Hadir')));
                 }).toList();
 
             if (filteredList.isEmpty) {
@@ -149,18 +153,19 @@ class _AktivitasHarianGuruState extends ConsumerState<AktivitasHarianGuru> {
     );
   }
 
+  String _getNormalizedStatus(String status) {
+    if (status.contains('🟢')) return 'Sedang Berlangsung';
+    if (status.contains('⏳')) return 'Akan Datang';
+    if (status.contains('✅')) return 'Selesai';
+    return status;
+  }
+
   Color _statusColor(String status) {
+    status = _getNormalizedStatus(status);
     if (status == 'Sedang Berlangsung') return Colors.green;
     if (status == 'Akan Datang') return Colors.orange;
     if (status == 'Selesai') return Colors.blue;
     return Colors.grey;
-  }
-
-  String _getStatusText(String status) {
-    if (status.contains('🟢')) return 'Berlangsung';
-    if (status.contains('⏳')) return 'Akan Datang';
-    if (status.contains('✅')) return 'Selesai';
-    return status;
   }
 }
 
@@ -191,7 +196,7 @@ class _ActivityCard extends StatelessWidget {
                     activity.statusKegiatan,
                   ).withAlpha(50),
                   label: Text(
-                    _getStatusText(activity.statusKegiatan),
+                    _getDisplayStatus(activity.statusKegiatan),
                     style: TextStyle(
                       color: _statusColor(activity.statusKegiatan),
                       fontSize: 12,
@@ -277,7 +282,7 @@ class _ActivityCard extends StatelessWidget {
               ],
             ),
 
-            // Jurnal (selalu ditampilkan)
+            // Jurnal
             const SizedBox(height: 16),
             Row(
               children: [
@@ -375,7 +380,7 @@ class _ActivityCard extends StatelessWidget {
     );
   }
 
-  String _getStatusText(String status) {
+  String _getDisplayStatus(String status) {
     if (status.contains('🟢')) return 'Sedang Berlangsung';
     if (status.contains('⏳')) return 'Akan Datang';
     if (status.contains('✅')) return 'Selesai';
