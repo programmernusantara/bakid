@@ -18,69 +18,73 @@ class AuthService {
   final SharedPreferences _sharedPrefs;
 
   static const _userKey = 'current_user_data';
-  static const _lastUsernameKey = 'last_username';
-  static const _rememberMeKey = 'remember_me';
+  static const _sessionKey = 'current_session';
 
   AuthService(this._supabase, this._sharedPrefs);
 
-  Future<Map<String, dynamic>?> login(
-    String username,
-    String password, {
-    bool rememberMe = true,
-  }) async {
+  Future<Map<String, dynamic>?> login(String username, String password) async {
     try {
-      final response =
+      // 1. Cari pengguna berdasarkan username
+      final userResponse =
           await _supabase
               .from('pengguna')
               .select()
               .eq('nama', username)
               .maybeSingle();
 
-      if (response == null) {
-        throw 'Username atau password salah';
+      if (userResponse == null) throw 'Pengguna tidak ditemukan';
+
+      // 2. Verifikasi password (dalam implementasi nyata, gunakan hashing)
+      // Ini hanya contoh - dalam produksi gunakan hashing yang aman
+      if (userResponse['password_hash'] != password) {
+        throw 'Password salah';
       }
 
-      if (response['password_hash'] != password) {
-        throw 'Username atau password salah';
-      }
-
-      if (response['peran'] == 'guru') {
-        final profil =
+      // 3. Dapatkan profil guru jika role adalah guru
+      Map<String, dynamic>? profile;
+      if (userResponse['peran'] == 'guru') {
+        profile =
             await _supabase
                 .from('profil_guru')
                 .select()
-                .eq('user_id', response['id'])
+                .eq('user_id', userResponse['id'])
                 .maybeSingle();
-
-        if (profil != null) {
-          response.addAll({'profil': profil});
-        }
       }
 
+      // 4. Update waktu login terakhir
       await _supabase
           .from('pengguna')
-          .update({'terakhir_login': DateTime.now().toIso8601String()})
-          .eq('id', response['id']);
+          .update({
+            'terakhir_login': DateTime.now().toUtc().toIso8601String(),
+            'diperbarui_pada': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', userResponse['id']);
 
-      await _saveUserData(response, rememberMe: rememberMe);
+      // 5. Gabungkan data user dan profile
+      final userData = {
+        ...userResponse,
+        if (profile != null) 'profil': profile,
+      };
 
-      return response;
-    } on PostgrestException {
+      // 6. Simpan data user ke shared preferences
+      await _saveUserData(userData);
+
+      return userData;
+    } on PostgrestException catch (e) {
+      debugPrint('Login error: ${e.message}');
       throw 'Terjadi kesalahan saat mengakses database';
+    } catch (e) {
+      debugPrint('Login error: $e');
+      rethrow;
     }
   }
 
-  Future<void> _saveUserData(
-    Map<String, dynamic> userData, {
-    bool rememberMe = true,
-  }) async {
-    await _sharedPrefs.setString(_userKey, jsonEncode(userData));
-    await _sharedPrefs.setBool(_rememberMeKey, rememberMe);
-
-    if (rememberMe) {
-      await _sharedPrefs.setString(_lastUsernameKey, userData['nama'] ?? '');
-    } else {
-      await _sharedPrefs.remove(_lastUsernameKey);
+  Future<void> _saveUserData(Map<String, dynamic> userData) async {
+    try {
+      await _sharedPrefs.setString(_userKey, jsonEncode(userData));
+    } catch (e) {
+      debugPrint('Error saving user data: $e');
+      throw 'Gagal menyimpan data login';
     }
   }
 
@@ -89,45 +93,44 @@ class AuthService {
       final userJson = _sharedPrefs.getString(_userKey);
       if (userJson == null) return null;
       return jsonDecode(userJson) as Map<String, dynamic>;
-    } catch (_) {
+    } catch (e) {
       await _sharedPrefs.remove(_userKey);
+      debugPrint('Error getting stored user: $e');
       return null;
     }
   }
 
-  Future<String?> getLastUsername() async {
-    final rememberMe = _sharedPrefs.getBool(_rememberMeKey) ?? false;
-    if (!rememberMe) return null;
-    return _sharedPrefs.getString(_lastUsernameKey);
-  }
-
   Future<void> logout() async {
     try {
-      // Bersihkan semua data pengguna dari SharedPreferences
+      // Clear Supabase session first
+      await _supabase.auth.signOut();
+
+      // Then clear local storage
       await _sharedPrefs.remove(_userKey);
-      await _sharedPrefs.remove(_lastUsernameKey);
-      await _sharedPrefs.remove(_rememberMeKey);
+      await _sharedPrefs.remove(_sessionKey);
+
+      // Add small delay to ensure all cleanup is done
+      await Future.delayed(const Duration(milliseconds: 200));
     } catch (e) {
       debugPrint('Error during logout: $e');
-      rethrow; // Re-throw exception untuk ditangani di UI
+      rethrow;
     }
-  }
-
-  Future<void> clearAllUserData() async {
-    await _sharedPrefs.remove(_userKey);
-    await _sharedPrefs.remove(_lastUsernameKey);
-    await _sharedPrefs.remove(_rememberMeKey);
   }
 
   Stream<Map<String, dynamic>?> authStateChanges() {
     return _supabase.auth.onAuthStateChange.asyncMap((authState) async {
-      // Tambahkan pengecekan event untuk langsung memperbarui state
-      if (authState.event == AuthChangeEvent.signedIn) {
+      try {
+        if (authState.event == AuthChangeEvent.signedOut) {
+          await _sharedPrefs.remove(_userKey);
+          await _sharedPrefs.remove(_sessionKey);
+          return null;
+        }
         return await getStoredUser();
-      } else if (authState.event == AuthChangeEvent.signedOut) {
+      } catch (e) {
+        debugPrint('Auth state error: $e');
+        await _sharedPrefs.remove(_userKey);
         return null;
       }
-      return await getStoredUser();
     });
   }
 }

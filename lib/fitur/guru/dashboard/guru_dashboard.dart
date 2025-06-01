@@ -18,7 +18,7 @@ class _GuruDashboardState extends State<GuruDashboard> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = const [
-    HomePage(),
+    HomeGuru(),
     AbsenTabPage(),
     AbsensiSiswaPage(),
     JurnalPage(),

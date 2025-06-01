@@ -13,15 +13,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 
-class HomePage extends ConsumerStatefulWidget {
-  const HomePage({super.key});
+class HomeGuru extends ConsumerStatefulWidget {
+  const HomeGuru({super.key});
 
   @override
-  ConsumerState<HomePage> createState() => _HomePageState();
+  ConsumerState<HomeGuru> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
-  bool _isLoggingOut = false;
+class _HomePageState extends ConsumerState<HomeGuru> {
+  final bool _isLoggingOut = false;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _handleLogout() async {
-    final shouldLogout = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (context) => AlertDialog(
@@ -93,44 +93,51 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onPressed: () => Navigator.pop(context, false),
                 child: const Text('Batal'),
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Keluar'),
+                child: const Text(
+                  'Keluar',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
           ),
     );
 
-    if (shouldLogout != true || !mounted) return;
-
-    setState(() => _isLoggingOut = true);
+    if (confirmed != true || !mounted) return;
 
     try {
-      // Lakukan logout
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sedang keluar...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Perform logout
       await ref.read(authServiceProvider).logout();
 
-      // Reset provider state
+      // Invalidate providers
       ref.invalidate(currentUserProvider);
       ref.invalidate(authStateProvider);
 
-      // Navigasi dengan menghapus semua halaman sebelumnya
+      // Ensure all cleanup is done
+      await Future.delayed(const Duration(milliseconds: 500));
+
       if (!mounted) return;
 
+      // Navigate to login
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (Route<dynamic> route) => false,
+        (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Gagal logout: ${e.toString()}')));
-    } finally {
-      if (mounted) {
-        setState(() => _isLoggingOut = false);
-      }
     }
   }
 }

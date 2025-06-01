@@ -18,88 +18,91 @@ class DetailProfilePage extends StatelessWidget {
         elevation: 0,
         backgroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Profile Picture Card
-            Card(
-              color: Colors.white,
-              elevation: 0.5,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withAlpha(100),
-                            blurRadius: 10,
-                            spreadRadius: 2,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 600),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Card(
+                  color: Colors.white,
+                  elevation: 0.5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.withAlpha(100),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage:
-                            profile['foto_url'] != null
-                                ? NetworkImage(profile['foto_url'])
-                                : null,
-                        backgroundColor: Colors.grey[200],
-                        child:
-                            profile['foto_url'] == null
-                                ? Icon(
-                                  Icons.person,
-                                  size: 50,
-                                  color: Colors.grey[600],
-                                )
-                                : null,
-                      ),
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundImage:
+                                profile['foto_url'] != null
+                                    ? NetworkImage(profile['foto_url'])
+                                    : null,
+                            backgroundColor: Colors.grey[200],
+                            child:
+                                profile['foto_url'] == null
+                                    ? Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: Colors.grey[600],
+                                    )
+                                    : null,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInfoTile(
+                          icon: Icons.person_outline,
+                          title: 'Nama Lengkap',
+                          value: profile['nama_lengkap'] ?? 'Guru',
+                        ),
+                        const Divider(height: 24),
+                        if (profile['jabatan'] != null)
+                          _buildInfoTile(
+                            icon: Icons.work_outline,
+                            title: 'Jabatan',
+                            value: profile['jabatan'],
+                          ),
+                        const Divider(height: 1),
+                        _buildInfoTile(
+                          icon: Icons.phone_outlined,
+                          title: 'Kontak',
+                          value: profile['nomor_telepon'] ?? 'Tidak tersedia',
+                        ),
+                        const Divider(height: 1),
+                        _buildInfoTile(
+                          icon: Icons.location_city_outlined,
+                          title: 'Asal Daerah',
+                          value: profile['asal_daerah'] ?? 'Tidak tersedia',
+                        ),
+                        const Divider(height: 1),
+                        _buildInfoTile(
+                          icon: Icons.home_outlined,
+                          title: 'Alamat',
+                          value: profile['alamat'] ?? 'Tidak tersedia',
+                          maxLines: 3,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    // Name and Position in same style as other info
-                    _buildInfoTile(
-                      icon: Icons.person_outline,
-                      title: 'Nama Lengkap',
-                      value: profile['nama_lengkap'] ?? 'Guru',
-                    ),
-                    const Divider(height: 24),
-                    if (profile['jabatan'] != null)
-                      _buildInfoTile(
-                        icon: Icons.work_outline,
-                        title: 'Jabatan',
-                        value: profile['jabatan'],
-                      ),
-                    const Divider(height: 1),
-                    _buildInfoTile(
-                      icon: Icons.phone_outlined,
-                      title: 'Kontak',
-                      value: profile['nomor_telepon'] ?? 'Tidak tersedia',
-                    ),
-                    const Divider(height: 1),
-                    _buildInfoTile(
-                      icon: Icons.location_city_outlined,
-                      title: 'Asal Daerah',
-                      value: profile['asal_daerah'] ?? 'Tidak tersedia',
-                    ),
-                    const Divider(height: 1),
-
-                    _buildInfoTile(
-                      icon: Icons.home_outlined,
-                      title: 'Alamat',
-                      value: profile['alamat'] ?? 'Tidak tersedia',
-                      maxLines: 3,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

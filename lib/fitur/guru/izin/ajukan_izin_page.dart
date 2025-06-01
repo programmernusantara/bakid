@@ -409,7 +409,15 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
                                                       String
                                                     >(
                                                       value: value,
-                                                      child: Text(value),
+                                                      child: Text(
+                                                        value,
+                                                        style: const TextStyle(
+                                                          color:
+                                                              Colors
+                                                                  .black87, // Explicit text color
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
                                                     );
                                                   }).toList(),
                                               onChanged: (value) {
@@ -425,7 +433,18 @@ class _AjukanIzinPageState extends ConsumerState<AjukanIzinPage> {
                                               },
                                               style: const TextStyle(
                                                 fontSize: 14,
+                                                color:
+                                                    Colors
+                                                        .black87, // Explicit text color
                                               ),
+                                              dropdownColor:
+                                                  Colors
+                                                      .white, // Ensure dropdown background is white
+                                              icon: const Icon(
+                                                Icons.arrow_drop_down,
+                                              ),
+                                              isExpanded:
+                                                  true, // Important for Android
                                             ),
                                           ],
                                         ),

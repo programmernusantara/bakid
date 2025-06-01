@@ -18,6 +18,7 @@ class AdminDashboard extends ConsumerStatefulWidget {
 
 class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int selectedIndex = 0;
+  bool _isLoggingOut = false;
 
   final List<Widget> pages = const [
     AktivitasHarianGuru(),
@@ -36,8 +37,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     'Jadwal Mengajar',
   ];
 
-  Future<void> _showLogoutConfirmation(BuildContext context) async {
-    final shouldLogout = await showDialog<bool>(
+  Future<void> _handleLogout() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (context) => AlertDialog(
@@ -45,43 +47,59 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             content: const Text('Apakah Anda yakin ingin keluar?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => Navigator.pop(context, false),
                 child: const Text('Batal'),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Keluar'),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Keluar',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
           ),
     );
 
-    if (shouldLogout == true) {
-      await _performLogout();
-    }
-  }
+    if (confirmed != true || !mounted) return;
 
-  Future<void> _performLogout() async {
+    setState(() => _isLoggingOut = true);
+
     try {
-      // Lakukan logout
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sedang keluar...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Perform logout
       await ref.read(authServiceProvider).logout();
 
-      // Reset provider state
+      // Invalidate providers
       ref.invalidate(currentUserProvider);
       ref.invalidate(authStateProvider);
 
-      // Navigate to login screen and remove all previous routes
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (Route<dynamic> route) => false,
-        );
-      }
+      // Ensure all cleanup is done
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      // Navigate to login
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
     } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal logout: ${e.toString()}')));
+    } finally {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal logout: ${e.toString()}')),
-        );
+        setState(() => _isLoggingOut = false);
       }
     }
   }
@@ -104,6 +122,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         elevation: 0.5,
         centerTitle: true,
         iconTheme: IconThemeData(color: colors.onSurface),
+        actions: [
+          if (_isLoggingOut)
+            const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+        ],
       ),
       drawer: Drawer(
         child: Column(
@@ -177,14 +206,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               selected: selectedIndex == 4,
               onTap: () => _onItemTapped(4),
             ),
-
             const Spacer(),
             const Divider(),
             _DrawerItem(
               icon: Icons.logout,
               label: 'Keluar',
               color: colors.error,
-              onTap: () => _showLogoutConfirmation(context),
+              onTap: _handleLogout, // Directly call _handleLogout
             ),
             const SizedBox(height: 16),
           ],

@@ -11,20 +11,18 @@ class AuthChecker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(currentUserProvider);
     final authState = ref.watch(authStateProvider);
-
-    // Prioritaskan currentUser langsung jika ada
-    if (currentUser != null) {
-      return _buildDashboard(currentUser);
-    }
+    final currentUser = ref.watch(currentUserProvider);
 
     return authState.when(
       loading: () => const SplashScreen(child: SizedBox()),
       error: (error, _) => LoginScreen(error: error.toString()),
       data: (user) {
-        if (user == null) return const LoginScreen();
-        return _buildDashboard(user);
+        // Prioritize currentUser if exists
+        final effectiveUser = currentUser ?? user;
+
+        if (effectiveUser == null) return const LoginScreen();
+        return _buildDashboard(effectiveUser);
       },
     );
   }
