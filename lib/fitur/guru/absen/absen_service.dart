@@ -94,8 +94,14 @@ class AbsenService {
         lokasiAbsen['longitude'],
       );
 
-      if (jarak > lokasiAbsen['radius_meter']) {
-        throw 'Anda berada di luar jangkauan lokasi absen. Jarak: ${jarak.toStringAsFixed(0)} meter dari lokasi yang ditentukan';
+      final radius = lokasiAbsen['radius_meter'] ?? 100;
+      if (jarak > radius) {
+        throw '''
+Anda berada di luar jangkauan lokasi absen. 
+Jarak: ${jarak.toStringAsFixed(0)} meter (maksimum $radius meter)
+Lokasi sekolah: ${lokasiAbsen['nama']} (${lokasiAbsen['latitude']}, ${lokasiAbsen['longitude']})
+Lokasi Anda: ($latitude, $longitude)
+''';
       }
 
       // 3. Validasi waktu

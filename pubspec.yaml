@@ -21,6 +21,8 @@ dependencies:
   lottie: ^3.3.1
   lucide_icons: ^0.257.0
   validators: ^3.0.0
+  flutter_map: ^8.1.1
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1

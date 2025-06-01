@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class AbsenTabPage extends ConsumerStatefulWidget {
   const AbsenTabPage({super.key});
@@ -56,6 +58,8 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
   Position? _currentPosition;
   final DateTime _currentDate = DateTime.now();
   final ScrollController _scrollController = ScrollController();
+  final MapController _mapController = MapController();
+  bool _isMapReady = false;
 
   @override
   void initState() {
@@ -67,6 +71,7 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -103,6 +108,12 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
       if (mounted) {
         setState(() {
           _jadwalHariIni = jadwal;
+          if (jadwal.isNotEmpty) {
+            _selectedJadwal = jadwal.first;
+            if (_isMapReady) {
+              _updateMapView();
+            }
+          }
         });
       }
     } catch (e) {
@@ -147,13 +158,48 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
     try {
       final position = await Geolocator.getCurrentPosition();
       if (mounted) {
-        setState(() => _currentPosition = position);
+        setState(() {
+          _currentPosition = position;
+          if (_isMapReady) {
+            _updateMapView();
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
         setState(() => _errorMessage = 'Gagal mendapatkan lokasi: $e');
       }
     }
+  }
+
+  void _updateMapView() {
+    if (!_isMapReady || _selectedJadwal == null || _currentPosition == null) {
+      return;
+    }
+
+    final lokasiAbsen = _selectedJadwal!['lokasi_absen'];
+    if (lokasiAbsen == null) return;
+
+    final latLngAbsen = LatLng(
+      lokasiAbsen['latitude'] as double,
+      lokasiAbsen['longitude'] as double,
+    );
+    final latLngSaya = LatLng(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+    );
+
+    // Calculate center point between the two locations
+    final center = LatLng(
+      (latLngAbsen.latitude + latLngSaya.latitude) / 2,
+      (latLngAbsen.longitude + latLngSaya.longitude) / 2,
+    );
+
+    // Calculate zoom level based on distance between points
+    final distance = const Distance().distance(latLngAbsen, latLngSaya);
+    final zoom = (15 - (distance / 1000).clamp(0, 10)).toDouble();
+
+    _mapController.move(center, zoom);
   }
 
   Future<void> _handleAbsen() async {
@@ -311,6 +357,94 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
     }
   }
 
+  Widget _buildMap() {
+    if (_selectedJadwal == null || _currentPosition == null) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.map_outlined, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 8),
+              Text('Memuat peta...', style: TextStyle(color: Colors.grey[600])),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final lokasiAbsen = _selectedJadwal!['lokasi_absen'] ?? {};
+    final latLngAbsen =
+        lokasiAbsen['latitude'] != null && lokasiAbsen['longitude'] != null
+            ? LatLng(lokasiAbsen['latitude'], lokasiAbsen['longitude'])
+            : null;
+    final latLngSaya = LatLng(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+    );
+
+    return SizedBox(
+      height: 200,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          initialCenter: latLngAbsen ?? latLngSaya,
+          initialZoom: 15,
+          onMapReady: () {
+            setState(() {
+              _isMapReady = true;
+            });
+            _updateMapView();
+          },
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.example.app',
+          ),
+          if (latLngAbsen != null)
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: latLngAbsen,
+                  width: 40,
+                  height: 40,
+                  child: Icon(Icons.school, color: Colors.red, size: 30),
+                ),
+                Marker(
+                  point: latLngSaya,
+                  width: 40,
+                  height: 40,
+                  child: Icon(
+                    Icons.person_pin_circle,
+                    color: Colors.blue,
+                    size: 30,
+                  ),
+                ),
+              ],
+            ),
+          if (latLngAbsen != null)
+            CircleLayer(
+              circles: [
+                CircleMarker(
+                  point: latLngAbsen,
+                  color: Colors.blue.withAlpha(100),
+                  borderColor: Colors.blue,
+                  borderStrokeWidth: 2,
+                  radius: (lokasiAbsen['radius_meter'] ?? 100).toDouble(),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -326,6 +460,15 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
           onPressed: () => Navigator.pop(context),
         ),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _getCurrentLocation();
+              _updateMapView();
+            },
+          ),
+        ],
       ),
       body: SafeArea(child: _buildMainContent(theme)),
     );
@@ -440,6 +583,89 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
                   ),
                 ),
 
+                // Map Section
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'LOKASI ABSEN',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              _buildMap(),
+                              const SizedBox(height: 12),
+                              if (_selectedJadwal?['lokasi_absen'] != null)
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      color: Colors.red,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedJadwal!['lokasi_absen']['nama'] ??
+                                            'Lokasi absen',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[800],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              if (_currentPosition != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.person_pin_circle,
+                                        color: Colors.blue,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Lokasi Anda saat ini',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[800],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // Jadwal List
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -479,7 +705,10 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
                             onTap: () {
-                              setState(() => _selectedJadwal = j);
+                              setState(() {
+                                _selectedJadwal = j;
+                                _updateMapView();
+                              });
                             },
                             child: Padding(
                               padding: const EdgeInsets.all(16),
@@ -580,12 +809,9 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
   }
 
   Widget _buildStatusMessage(String message, IconData icon, Color color) {
-    // Warna netral yang disesuaikan dengan jenis pesan
-    final bgColor = color.withAlpha(
-      20,
-    ); // Nilai alpha antara 0-255 (20 ≈ 0.08 opacity)
-    final borderColor = color.withAlpha(38); // 38 ≈ 0.15 opacity
-    final textColor = Colors.grey[800]; // Warna teks netral
+    final bgColor = color.withAlpha(20);
+    final borderColor = color.withAlpha(38);
+    final textColor = Colors.grey[800];
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -598,11 +824,7 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 20,
-              color: textColor?.withAlpha(204), // 204 ≈ 0.8 opacity
-            ),
+            Icon(icon, size: 20, color: textColor?.withAlpha(204)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -637,7 +859,13 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
   Widget _buildDetailCard() {
     final lokasiAbsen = _selectedJadwal!['lokasi_absen'] ?? {};
     final radius =
-        lokasiAbsen['radius'] != null ? '${lokasiAbsen['radius']} meter' : '-';
+        lokasiAbsen['radius_meter'] != null
+            ? '${lokasiAbsen['radius_meter']} meter'
+            : '100 meter (default)';
+    final koordinat =
+        lokasiAbsen['latitude'] != null && lokasiAbsen['longitude'] != null
+            ? '(${lokasiAbsen['latitude']}, ${lokasiAbsen['longitude']})'
+            : '-';
 
     return Card(
       elevation: 0,
@@ -684,7 +912,22 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
               '${_formatTime(_selectedJadwal!['waktu_mulai'])} - ${_formatTime(_selectedJadwal!['waktu_selesai'])}',
             ),
             _buildDetailRow('Lokasi Absen', lokasiAbsen['nama'] ?? '-'),
-            _buildDetailRow('Radius', radius),
+            _buildDetailRow('Koordinat', koordinat),
+            _buildDetailRow('Radius Diperbolehkan', radius),
+            if (_currentPosition != null) ...[
+              const SizedBox(height: 12),
+              Divider(color: Colors.grey[300]),
+              const SizedBox(height: 8),
+              _buildDetailRow(
+                'Lokasi Anda Saat Ini',
+                '(${_currentPosition!.latitude.toStringAsFixed(6)}, '
+                    '${_currentPosition!.longitude.toStringAsFixed(6)})',
+              ),
+              _buildDetailRow(
+                'Akurasi',
+                '± ${_currentPosition!.accuracy.toStringAsFixed(1)} meter',
+              ),
+            ],
           ],
         ),
       ),
