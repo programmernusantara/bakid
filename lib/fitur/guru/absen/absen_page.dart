@@ -923,10 +923,6 @@ class _AbsenContentState extends ConsumerState<AbsenContent> {
                 '(${_currentPosition!.latitude.toStringAsFixed(6)}, '
                     '${_currentPosition!.longitude.toStringAsFixed(6)})',
               ),
-              _buildDetailRow(
-                'Akurasi',
-                '± ${_currentPosition!.accuracy.toStringAsFixed(1)} meter',
-              ),
             ],
           ],
         ),
