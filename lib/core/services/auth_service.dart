@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:bakid/fitur/auth/auth_providers.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -102,14 +103,30 @@ class AuthService {
 
   Future<void> logout() async {
     try {
+      // Bersihkan semua data pengguna dari SharedPreferences
       await _sharedPrefs.remove(_userKey);
-    } catch (_) {
-      throw 'Gagal logout';
+      await _sharedPrefs.remove(_lastUsernameKey);
+      await _sharedPrefs.remove(_rememberMeKey);
+    } catch (e) {
+      debugPrint('Error during logout: $e');
+      rethrow; // Re-throw exception untuk ditangani di UI
     }
   }
 
+  Future<void> clearAllUserData() async {
+    await _sharedPrefs.remove(_userKey);
+    await _sharedPrefs.remove(_lastUsernameKey);
+    await _sharedPrefs.remove(_rememberMeKey);
+  }
+
   Stream<Map<String, dynamic>?> authStateChanges() {
-    return _supabase.auth.onAuthStateChange.asyncMap((_) async {
+    return _supabase.auth.onAuthStateChange.asyncMap((authState) async {
+      // Tambahkan pengecekan event untuk langsung memperbarui state
+      if (authState.event == AuthChangeEvent.signedIn) {
+        return await getStoredUser();
+      } else if (authState.event == AuthChangeEvent.signedOut) {
+        return null;
+      }
       return await getStoredUser();
     });
   }

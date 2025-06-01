@@ -1,4 +1,6 @@
+import 'package:bakid/fitur/guru/home/components/detail_profile_page.dart';
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 
 class ProfileHeader extends StatelessWidget {
   final Map<String, dynamic>? profile;
@@ -48,6 +50,19 @@ class ProfileHeader extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Iconsax.eye, size: 20),
+            onPressed: () {
+              if (profile != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DetailProfilePage(profile: profile!),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),

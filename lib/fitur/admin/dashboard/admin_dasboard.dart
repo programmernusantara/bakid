@@ -62,16 +62,27 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   }
 
   Future<void> _performLogout() async {
-    final authService = ref.read(authServiceProvider);
-    await authService.logout();
-    ref.read(currentUserProvider.notifier).state = null;
+    try {
+      // Lakukan logout
+      await ref.read(authServiceProvider).logout();
 
-    // Navigate to login screen and remove all previous routes
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (Route<dynamic> route) => false,
-      );
+      // Reset provider state
+      ref.invalidate(currentUserProvider);
+      ref.invalidate(authStateProvider);
+
+      // Navigate to login screen and remove all previous routes
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal logout: ${e.toString()}')),
+        );
+      }
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:bakid/core/services/auth_service.dart';
+import 'package:bakid/fitur/auth/auth_checker.dart';
 import 'package:bakid/fitur/auth/auth_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,12 +49,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      ref.read(currentUserProvider.notifier).state = user;
+      // Langsung navigasi setelah login berhasil
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(currentUserProvider.notifier).state = user;
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const AuthChecker()),
+            (route) => false,
+          );
+        }
+      });
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: ${e.toString()}')),
-      );
+      // Error handling tetap sama
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

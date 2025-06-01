@@ -107,15 +107,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     setState(() => _isLoggingOut = true);
 
     try {
+      // Lakukan logout
       await ref.read(authServiceProvider).logout();
-      ref.read(currentUserProvider.notifier).state = null;
 
+      // Reset provider state
+      ref.invalidate(currentUserProvider);
+      ref.invalidate(authStateProvider);
+
+      // Navigasi dengan menghapus semua halaman sebelumnya
       if (!mounted) return;
 
-      // Gunakan ini:
-      Navigator.of(context).pushAndRemoveUntil(
+      Navigator.pushAndRemoveUntil(
+        context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
+        (Route<dynamic> route) => false,
       );
     } catch (e) {
       if (!mounted) return;

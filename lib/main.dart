@@ -82,15 +82,24 @@ class _AuthCheckerWrapperState extends ConsumerState<AuthCheckerWrapper> {
   @override
   void initState() {
     super.initState();
-    _loadUser();
+    // Don't modify providers here, just load the data
+    _userFuture = ref.read(authServiceProvider).getStoredUser();
   }
 
-  Future<void> _loadUser() async {
-    _userFuture = ref.read(authServiceProvider).getStoredUser();
-    final user = await _userFuture;
-    if (user != null && mounted) {
-      ref.read(currentUserProvider.notifier).state = user;
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Use didChangeDependencies to handle the future result
+    _userFuture?.then((user) {
+      if (user != null && mounted) {
+        // Schedule the provider update for the next frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ref.read(currentUserProvider.notifier).state = user;
+          }
+        });
+      }
+    });
   }
 
   @override
