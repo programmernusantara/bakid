@@ -1,8 +1,8 @@
-import 'package:bakid/fitur/admin/pengumuman/pengumuman_provider.dart';
+import 'dart:io';
+import 'package:bakid/fitur/admin/pengumuman/pengumuman_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PengumumanFormPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -22,8 +22,10 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
 
   bool _isLoading = false;
   bool _aktif = true;
+  File? _imageFile;
   String? _fotoUrl;
   String? _currentFotoUrl;
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -45,63 +47,69 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
 
   Future<void> _pickImage() async {
     try {
-      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      final pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
       if (pickedFile == null || !mounted) return;
 
-      setState(() => _isLoading = true);
-
-      final supabase = Supabase.instance.client;
-      final bytes = await pickedFile.readAsBytes();
-      final fileExt = pickedFile.path.split('.').last;
-      final fileName = '${DateTime.now().toIso8601String()}.$fileExt';
-      final filePath = 'pengumuman/$fileName';
-
-      await supabase.storage
-          .from('pengumuman')
-          .uploadBinary(
-            filePath,
-            bytes,
-            fileOptions: FileOptions(contentType: pickedFile.mimeType),
-          );
-
-      final imageUrl = supabase.storage
-          .from('pengumuman')
-          .getPublicUrl(filePath);
-
-      if (mounted) {
-        setState(() {
-          _fotoUrl = imageUrl;
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _imageFile = File(pickedFile.path);
+        _fotoUrl = null;
+      });
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        _showErrorSnackbar('Gagal mengunggah gambar: ${e.toString()}');
+        _showErrorSnackbar('Gagal memilih gambar: ${e.toString()}');
       }
     }
   }
 
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+  Future<String?> _uploadImage() async {
+    if (_imageFile == null) return _currentFotoUrl;
+
+    if (!mounted) return null;
+    setState(() => _isUploadingImage = true);
+
+    try {
+      final pengumumanService = ref.read(pengumumanServiceProvider);
+      final imageUrl = await pengumumanService.uploadImage(_imageFile!);
+
+      // Hapus gambar lama jika ada
+      if (widget.initialData != null &&
+          widget.initialData!['foto_url'] != null) {
+        await pengumumanService.deleteOldImage(widget.initialData!['foto_url']);
+      }
+
+      return imageUrl;
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackbar('Gagal mengunggah gambar: ${e.toString()}');
+      }
+      return null;
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+      }
+    }
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (!mounted) return;
+    if (!_formKey.currentState!.validate() || !mounted) return;
 
     setState(() => _isLoading = true);
 
     try {
       final pengumumanService = ref.read(pengumumanServiceProvider);
+      final imageUrl = await _uploadImage();
+      if (!mounted) return;
 
       if (widget.initialData == null) {
         await pengumumanService.createPengumuman(
           judul: _judulController.text,
           isi: _isiController.text,
-          fotoUrl: _fotoUrl,
+          fotoUrl: imageUrl,
           adminId: widget.adminId!,
         );
       } else {
@@ -109,7 +117,7 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
           id: widget.initialData!['id'],
           judul: _judulController.text,
           isi: _isiController.text,
-          fotoUrl: _fotoUrl ?? _currentFotoUrl,
+          fotoUrl: imageUrl ?? _currentFotoUrl,
           aktif: _aktif,
         );
       }
@@ -128,6 +136,19 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
     }
   }
 
+  void _showErrorSnackbar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditMode = widget.initialData != null;
@@ -137,7 +158,7 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
       appBar: AppBar(
         title: Text(
           isEditMode ? 'Edit Pengumuman' : 'Buat Pengumuman',
-          style: TextStyle(color: Colors.black87),
+          style: const TextStyle(color: Colors.black87),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -159,7 +180,6 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
           key: _formKey,
           child: Column(
             children: [
-              // Judul Field
               TextFormField(
                 controller: _judulController,
                 decoration: InputDecoration(
@@ -176,7 +196,6 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Isi Field
               TextFormField(
                 controller: _isiController,
                 decoration: InputDecoration(
@@ -195,7 +214,6 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Status Switch (hanya di edit mode)
               if (isEditMode)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -215,7 +233,6 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
                 ),
               const SizedBox(height: 16),
 
-              // Image Upload Section
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -229,27 +246,76 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Image Preview
-                  if (_fotoUrl != null || _currentFotoUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        _fotoUrl ?? _currentFotoUrl!,
-                        height: 180,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (context, error, stackTrace) => Container(
-                              height: 180,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.broken_image, size: 50),
-                            ),
+                  if (_isUploadingImage)
+                    Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: const Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_fotoUrl != null || _currentFotoUrl != null)
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            _fotoUrl ?? _currentFotoUrl!,
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                height: 180,
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value:
+                                        loadingProgress.expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder:
+                                (context, error, stackTrace) => Container(
+                                  height: 180,
+                                  color: Colors.grey[200],
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    size: 50,
+                                  ),
+                                ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              if (mounted) {
+                                setState(() {
+                                  _fotoUrl = null;
+                                  _currentFotoUrl = null;
+                                  _imageFile = null;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-
                   const SizedBox(height: 12),
 
-                  // Upload Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -262,7 +328,7 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        side: BorderSide(color: Colors.blue),
+                        side: const BorderSide(color: Colors.blue),
                       ),
                     ),
                   ),
@@ -270,7 +336,6 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
               ),
               const SizedBox(height: 32),
 
-              // Submit Button
               SizedBox(
                 width: double.infinity,
                 height: 50,

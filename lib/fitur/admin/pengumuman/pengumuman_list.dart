@@ -1,5 +1,5 @@
 import 'package:bakid/fitur/admin/pengumuman/pengumuman_form.dart';
-import 'package:bakid/fitur/admin/pengumuman/pengumuman_provider.dart';
+import 'package:bakid/fitur/admin/pengumuman/pengumuman_service.dart';
 import 'package:bakid/fitur/auth/auth_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

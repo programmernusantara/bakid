@@ -1,7 +1,7 @@
 import 'package:bakid/fitur/admin/dashboard/aktivitas_guru.dart';
 import 'package:bakid/fitur/admin/kelas/kelas_list_page.dart';
+import 'package:bakid/fitur/admin/managemnt_guru/guru_managemnt_paget.dart';
 import 'package:bakid/fitur/admin/pengumuman/pengumuman_list.dart';
-import 'package:bakid/fitur/admin/dashboard/profile_guru.dart';
 import 'package:bakid/fitur/admin/dashboard/verivikasi_izin.dart';
 import 'package:bakid/fitur/auth/login_screen.dart';
 import 'package:flutter/material.dart';

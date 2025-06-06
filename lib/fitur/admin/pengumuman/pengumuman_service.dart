@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:bakid/core/services/auth_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -18,6 +20,41 @@ class PengumumanService {
         .select('*, admin_id(nama)')
         .order('dibuat_pada', ascending: false);
     return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<String?> uploadImage(File imageFile) async {
+    try {
+      final fileExt = imageFile.path.split('.').last;
+      final fileName =
+          'pengumuman_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+
+      await _supabase.storage
+          .from('images-pengumuman')
+          .upload(
+            fileName,
+            imageFile,
+            fileOptions: FileOptions(
+              contentType: 'image/$fileExt',
+              upsert: true,
+            ),
+          );
+
+      return _supabase.storage.from('images-pengumuman').getPublicUrl(fileName);
+    } catch (e) {
+      debugPrint('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  Future<void> deleteOldImage(String? imageUrl) async {
+    if (imageUrl == null) return;
+
+    try {
+      final oldFileName = imageUrl.split('/').last;
+      await _supabase.storage.from('images-pengumuman').remove([oldFileName]);
+    } catch (e) {
+      debugPrint('Error deleting old image: $e');
+    }
   }
 
   Future<Map<String, dynamic>> createPengumuman({
