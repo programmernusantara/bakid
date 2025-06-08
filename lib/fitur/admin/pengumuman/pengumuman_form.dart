@@ -26,6 +26,7 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
   String? _fotoUrl;
   String? _currentFotoUrl;
   bool _isUploadingImage = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -53,15 +54,21 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
         maxHeight: 1200,
         imageQuality: 85,
       );
-      if (pickedFile == null || !mounted) return;
+
+      if (pickedFile == null) return;
+      if (!mounted) return;
 
       setState(() {
         _imageFile = File(pickedFile.path);
         _fotoUrl = null;
+        _errorMessage = null;
       });
     } catch (e) {
       if (mounted) {
-        _showErrorSnackbar('Gagal memilih gambar: ${e.toString()}');
+        setState(() {
+          _errorMessage = 'Gagal memilih gambar: ${e.toString()}';
+        });
+        _showErrorSnackbar(_errorMessage!);
       }
     }
   }
@@ -70,7 +77,10 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
     if (_imageFile == null) return _currentFotoUrl;
 
     if (!mounted) return null;
-    setState(() => _isUploadingImage = true);
+    setState(() {
+      _isUploadingImage = true;
+      _errorMessage = null;
+    });
 
     try {
       final pengumumanService = ref.read(pengumumanServiceProvider);
@@ -79,13 +89,22 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
       // Hapus gambar lama jika ada
       if (widget.initialData != null &&
           widget.initialData!['foto_url'] != null) {
-        await pengumumanService.deleteOldImage(widget.initialData!['foto_url']);
+        try {
+          await pengumumanService.deleteOldImage(
+            widget.initialData!['foto_url'],
+          );
+        } catch (e) {
+          debugPrint('Gagal menghapus gambar lama: $e');
+        }
       }
 
       return imageUrl;
     } catch (e) {
       if (mounted) {
-        _showErrorSnackbar('Gagal mengunggah gambar: ${e.toString()}');
+        setState(() {
+          _errorMessage = 'Gagal mengunggah gambar: ${e.toString()}';
+        });
+        _showErrorSnackbar(_errorMessage!);
       }
       return null;
     } finally {
@@ -98,7 +117,10 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate() || !mounted) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final pengumumanService = ref.read(pengumumanServiceProvider);
@@ -127,7 +149,10 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackbar('Error: ${e.toString()}');
+        setState(() {
+          _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+        });
+        _showErrorSnackbar(_errorMessage!);
       }
     } finally {
       if (mounted) {
@@ -145,6 +170,145 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'Tutup',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePreview() {
+    if (_isUploadingImage) {
+      return Container(
+        height: 180,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 8),
+              Text('Mengunggah gambar...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_imageFile != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(
+              _imageFile!,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder:
+                  (context, error, stackTrace) => Container(
+                    height: 180,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image, size: 50),
+                  ),
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                if (mounted) {
+                  setState(() {
+                    _imageFile = null;
+                    _fotoUrl = null;
+                  });
+                }
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_fotoUrl != null || _currentFotoUrl != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              _fotoUrl ?? _currentFotoUrl!,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 180,
+                  color: Colors.grey[200],
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value:
+                          loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                    ),
+                  ),
+                );
+              },
+              errorBuilder:
+                  (context, error, stackTrace) => Container(
+                    height: 180,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image, size: 50),
+                  ),
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                if (mounted) {
+                  setState(() {
+                    _fotoUrl = null;
+                    _currentFotoUrl = null;
+                    _imageFile = null;
+                  });
+                }
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[400]!),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.image, size: 50, color: Colors.grey),
+          const SizedBox(height: 8),
+          Text('Belum ada gambar', style: TextStyle(color: Colors.grey[600])),
+        ],
       ),
     );
   }
@@ -246,74 +410,17 @@ class _PengumumanFormPageState extends ConsumerState<PengumumanFormPage> {
                   ),
                   const SizedBox(height: 8),
 
-                  if (_isUploadingImage)
-                    Container(
-                      height: 180,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
+                  _buildImagePreview(),
+
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
                       ),
-                      child: const Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_fotoUrl != null || _currentFotoUrl != null)
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            _fotoUrl ?? _currentFotoUrl!,
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                height: 180,
-                                color: Colors.grey[200],
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    value:
-                                        loadingProgress.expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                    .cumulativeBytesLoaded /
-                                                loadingProgress
-                                                    .expectedTotalBytes!
-                                            : null,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder:
-                                (context, error, stackTrace) => Container(
-                                  height: 180,
-                                  color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.broken_image,
-                                    size: 50,
-                                  ),
-                                ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              if (mounted) {
-                                setState(() {
-                                  _fotoUrl = null;
-                                  _currentFotoUrl = null;
-                                  _imageFile = null;
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                      ],
                     ),
+
                   const SizedBox(height: 12),
 
                   SizedBox(
