@@ -190,6 +190,7 @@ class _KelasDetailPageState extends ConsumerState<KelasDetailPage>
               itemBuilder: (context, index) {
                 final mapel = mataPelajaranList[index];
                 return Card(
+                  color: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -301,6 +302,7 @@ class _KelasDetailPageState extends ConsumerState<KelasDetailPage>
                     itemBuilder: (context, index) {
                       final jadwal = jadwalList[index];
                       return Card(
+                        color: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -482,6 +484,7 @@ class _KelasDetailPageState extends ConsumerState<KelasDetailPage>
             final jurnal = jurnalList[index];
 
             return Card(
+              color: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -654,6 +657,7 @@ class _KelasDetailPageState extends ConsumerState<KelasDetailPage>
           itemBuilder: (context, index) {
             final absensi = absensiList[index];
             return Card(
+              color: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

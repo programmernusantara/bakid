@@ -336,6 +336,8 @@ class _GuruManagementPageState extends ConsumerState<GuruManagementPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddProfileDialog,
+        mini: true,
+
         backgroundColor: colors.primary,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
